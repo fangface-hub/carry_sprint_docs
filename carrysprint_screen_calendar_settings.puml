@@ -1,0 +1,30 @@
+@startuml CarrySprintCalendarSettingsScreen
+salt
+{
+{T
++ Working-Day Calendar   Month: [2026-04 v]
+}
+--
+{|
+{+
+"Calendar Grid"
+Mo Tu We Th Fr Sa Su
+01 02 03 04 05 06 07
+08 09 10 11 12 13 14
+15 16 17 18 19 20 21
+22 23 24 25 26 27 28
+29 30
+}
+{+
+"Side Controls"
+[X] Working day
+[ ] Holiday
+Note: [_________________]
+[Bulk Set Weekdays]
+[Import Holidays]
+}
+|}
+--
+[Save Calendar] [Reset Month] [Return to Workspace]
+}
+@enduml

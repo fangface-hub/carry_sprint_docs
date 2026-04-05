@@ -1,0 +1,33 @@
+@startuml CarrySprintSoftwareArchitecture
+
+title CarrySprint Software Component Architecture
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+component "Browser Client" as browser
+component "API Gateway Component\n(HTTP Endpoint / Router / Middleware)" as api
+package "Application Component" as app {
+  component "Controller" as controller
+  component "Model" as model
+  component "View" as view
+}
+database "SQLite\n(project_{id}.sqlite)" as sqlite
+
+browser --0)-- api : HTTP API
+api --0)-- controller : ZeroMQ IPC
+controller --> model : Invoke domain logic
+controller --> view : Build response
+sqlite --0)-- model : Data Store Interface
+
+note right of api
+  Requirement-level component.
+  Internal classes are out of scope.
+end note
+
+note right of app
+  Performs task selection and carry-over logic.
+end note
+
+@enduml

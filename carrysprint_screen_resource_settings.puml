@@ -1,0 +1,27 @@
+@startuml CarrySprintResourceSettingsScreen
+salt
+{
+{T
++ Resource Settings   [Back to Workspace]
+}
+--
+{|
+{+
+"Resource Table"
+Name | Role | Capacity(h/day) | Active
+Alice | Dev | 6.0 | [X]
+Bob   | QA  | 4.0 | [X]
+}
+{+
+"Detail Form"
+Name: [________________]
+Role: [Developer v]
+Capacity(h/day): [____]
+Active: [X]
+[Save] [Delete]
+}
+|}
+--
+[Add Resource] [Save Changes] [Cancel]
+}
+@enduml

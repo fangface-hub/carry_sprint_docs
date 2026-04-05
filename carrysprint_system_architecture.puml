@@ -1,0 +1,71 @@
+@startuml CarrySprintSystemArchitecture
+
+title CarrySprint System Architecture
+
+skinparam componentStyle rectangle
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+actor "User" as user
+
+node "Client" as client {
+  component "Web Browser\n(No extra software)\nWindows / macOS / Linux / Mobile" as browser
+}
+
+node "Server" as server {
+  frame "Web Gateway Process" as proc_a {
+    component "Go HTTP Server\nRouter" as router
+  }
+  frame "Application Process" as proc_b {
+    package "CarrySprint Application (MVC)" as mvc {
+      component "Controller" as controller
+      component "Model" as model
+      component "View" as view
+    }
+  }
+  folder "Data Store" as datastore {
+    database "SQLite (Per Project)" as sqlite
+    artifact "project_alpha.sqlite" as db_alpha
+    artifact "project_beta.sqlite" as db_beta
+    artifact "project_<id>.sqlite" as db_template
+    artifact "resource_info" as resource_info
+    artifact "working_day_calendar" as working_day_calendar
+  }
+}
+
+user --> browser : Open CarrySprint URL
+browser --> router : HTTPS/HTTP Request
+router --> controller : ZeroMQ Request/Reply
+controller --> model : Read/Write domain data
+controller --> view : Build response
+view --> router : ZeroMQ Response Payload
+router --> browser : HTTP Response
+
+model --> sqlite : Open project DB file
+model --> resource_info : Read/Write resource data
+model --> working_day_calendar : Read/Write calendar data
+sqlite --> db_alpha : Manage
+sqlite --> db_beta : Manage
+sqlite --> db_template : Manage by project ID
+sqlite --> resource_info : Store resource information
+sqlite --> working_day_calendar : Store working-day calendar
+
+note right of browser
+  Client runs in a standard browser.
+  No installation required.
+end note
+
+note right of server
+  Inter-process I/O uses ZeroMQ.
+  Server runs on Windows or Linux.
+  Any machine is acceptable if Go can run.
+end note
+
+note right of sqlite
+  Each project uses a separate SQLite file.
+  Example: project_<id>.sqlite
+  Resource information is also managed in SQLite.
+  Working-day calendar is also managed in SQLite.
+end note
+
+@enduml

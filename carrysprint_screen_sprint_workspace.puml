@@ -1,0 +1,34 @@
+@startuml CarrySprintSprintWorkspaceScreen
+salt
+{
+{T
++ CarrySprint - Sprint Workspace
+Project: [Alpha v]   Sprint: [S1 v]   [Settings]
+}
+--
+Remaining Hours: 12h   Productivity: 0.82   Selected Impact: High
+--
+{|
+{+
+"Budget In"
+[] Task A   4.1h   impact:high
+[] Task B   3.2h   impact:mid
+}
+{+
+"Task Editor"
+Title: [_____________________]
+Impact: [high v]
+Estimate(h): [____]
+Carry-over reason: [__________]
+}
+{+
+"Budget Out"
+[] Task C  12.2h  impact:low
+[] Task D  15.8h  impact:high (in progress)
+[Re-evaluate]
+}
+|}
+--
+[Recalculate] [Confirm Selection] [Carry-over Review]
+}
+@enduml

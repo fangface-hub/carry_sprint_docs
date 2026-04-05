@@ -1,0 +1,24 @@
+@startuml CarrySprintCarryoverDialog
+salt
+{
+{T
++ Carry-Over Review
+}
+--
+{|
+{+
+"Deferred Task List"
+[] Task C   impact:low   12.2h
+[] Task D   impact:high  15.8h
+}
+{+
+"Decision"
+(X) Keep deferred
+() Promote to budget-in
+Rationale: [__________________]
+}
+|}
+--
+[Apply] [Close]
+}
+@enduml

@@ -1,0 +1,88 @@
+@startuml CarrySprintDatabaseDesign
+
+title CarrySprint Database Design (Per Project SQLite)
+
+hide methods
+hide stereotypes
+skinparam linetype ortho
+skinparam shadowing false
+
+entity "projects" as projects {
+  * project_id : TEXT <<PK>>
+  --
+  name : TEXT
+  description : TEXT
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity "sprints" as sprints {
+  * sprint_id : TEXT <<PK>>
+  --
+  project_id : TEXT <<FK>>
+  name : TEXT
+  budget_hours : REAL
+  productivity_factor : REAL
+  start_date : DATE
+  end_date : DATE
+  created_at : DATETIME
+}
+
+entity "tasks" as tasks {
+  * task_id : TEXT <<PK>>
+  --
+  project_id : TEXT <<FK>>
+  sprint_id : TEXT <<FK, nullable>>
+  title : TEXT
+  description : TEXT
+  estimated_hours : REAL
+  impact_level : TEXT
+  status : TEXT
+  carry_over_count : INTEGER
+  is_in_progress : BOOLEAN
+  created_at : DATETIME
+  updated_at : DATETIME
+}
+
+entity "resources" as resources {
+  * resource_id : TEXT <<PK>>
+  --
+  project_id : TEXT <<FK>>
+  name : TEXT
+  role : TEXT
+  capacity_hours_per_day : REAL
+  active : BOOLEAN
+  created_at : DATETIME
+}
+
+entity "working_day_calendar" as calendar {
+  * calendar_id : TEXT <<PK>>
+  --
+  project_id : TEXT <<FK>>
+  work_date : DATE
+  is_working_day : BOOLEAN
+  note : TEXT
+}
+
+entity "task_resource_allocations" as allocations {
+  * allocation_id : TEXT <<PK>>
+  --
+  task_id : TEXT <<FK>>
+  resource_id : TEXT <<FK>>
+  allocated_hours : REAL
+}
+
+projects ||--o{ sprints
+projects ||--o{ tasks
+projects ||--o{ resources
+projects ||--o{ calendar
+sprints ||--o{ tasks
+resources ||--o{ allocations
+tasks ||--o{ allocations
+
+note bottom
+  One SQLite file is created per project.
+  File name example: project_<id>.sqlite
+end note
+
+@enduml

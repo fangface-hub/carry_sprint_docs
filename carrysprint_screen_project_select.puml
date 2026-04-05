@@ -1,0 +1,27 @@
+@startuml CarrySprintProjectSelectScreen
+salt
+{
+{T
++ CarrySprint - Project Select Screen
+}
+{|
+{+
+"Project List"
+[Search projects__________________] [Search]
+()	Project Alpha   Sprint:S1   Budget:12h
+()	Project Beta    Sprint:S3   Budget:20h
+[Open Selected] [New Project]
+}
+{+
+"Project Summary"
+Name: Project Alpha
+Description: Budget-first sprint planning
+Last Updated: 2026-04-05
+[Open Project]
+}
+|}
+--
+Version 0.1   [Help]
+}
+}
+@enduml
