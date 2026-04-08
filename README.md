@@ -12,6 +12,34 @@ Unlike traditional backlog and progress management tools, CarrySprint does not a
 
 CarrySprint focuses on one goal: select only high-impact tasks within a limited budget.
 
+## Document Structure
+
+The documentation is organized by intent so both humans and AI tools can locate the right source quickly.
+
+```text
+/docs
+  /requirements
+    software_requirements_specification.md
+  /architecture
+    system_architecture.puml
+    software_architecture.puml
+    database_design.puml
+  /ui
+    screen_design.puml
+    screen_project_select.puml
+    screen_sprint_workspace.puml
+    screen_resource_settings.puml
+    screen_calendar_settings.puml
+    screen_carryover_dialog.puml
+  /glossary
+    terms.md
+```
+
+- Start with `docs/requirements/software_requirements_specification.md` for the full specification.
+- Use `docs/architecture` for structural diagrams.
+- Use `docs/ui` for screen flow and screen-specific mock diagrams.
+- Use `docs/glossary/terms.md` for domain vocabulary.
+
 ## Problems CarrySprint Solves
 
 ### 1. Budget-First Development

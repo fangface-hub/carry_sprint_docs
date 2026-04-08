@@ -12,7 +12,7 @@ This diagram shows the runtime structure of CarrySprint.
 | Project storage | SQLite-based per-project storage |
 
 ```plantuml
-!include ./carrysprint_system_architecture.puml
+!include ../architecture/system_architecture.puml
 ```
 
 ### 1.1 Design Writing Policy
@@ -39,7 +39,7 @@ This diagram shows the software component structure of CarrySprint.
 | SQLite | Per-project persistent storage |
 
 ```plantuml
-!include ./carrysprint_software_architecture.puml
+!include ../architecture/software_architecture.puml
 ```
 
 ## 3. Database Design
@@ -54,7 +54,7 @@ This diagram shows the logical database structure for each project.
 | Storage unit | One SQLite file per project |
 
 ```plantuml
-!include ./carrysprint_database_design.puml
+!include ../architecture/database_design.puml
 ```
 
 ### 3.1 Database Policy
@@ -74,7 +74,7 @@ This diagram shows the screen structure of the browser client.
 | Navigation paths | Screen transitions between primary screens |
 
 ```plantuml
-!include ./carrysprint_screen_design.puml
+!include ../ui/screen_design.puml
 ```
 
 ### 4.1 Screen Design Policy
@@ -106,7 +106,7 @@ This diagram shows the external appearance of the project selection screen.
 | Project summary | Summary area for the selected project |
 
 ```plantuml
-!include ./carrysprint_screen_project_select.puml
+!include ../ui/screen_project_select.puml
 ```
 
 #### 4.3.2 Sprint Workspace Screen
@@ -120,7 +120,7 @@ This diagram shows the external appearance of the sprint workspace screen.
 | Task editing | Editing area for task details |
 
 ```plantuml
-!include ./carrysprint_screen_sprint_workspace.puml
+!include ../ui/screen_sprint_workspace.puml
 ```
 
 #### 4.3.3 Resource Settings Screen
@@ -133,7 +133,7 @@ This diagram shows the external appearance of the resource settings screen.
 | Resource edit form | Edit area for one resource |
 
 ```plantuml
-!include ./carrysprint_screen_resource_settings.puml
+!include ../ui/screen_resource_settings.puml
 ```
 
 #### 4.3.4 Working-Day Calendar Screen
@@ -146,7 +146,7 @@ This diagram shows the external appearance of the working-day calendar screen.
 | Calendar control area | Calendar operation controls |
 
 ```plantuml
-!include ./carrysprint_screen_calendar_settings.puml
+!include ../ui/screen_calendar_settings.puml
 ```
 
 #### 4.3.5 Carry-Over Review Dialog
@@ -159,5 +159,5 @@ This diagram shows the external appearance of the carry-over review dialog.
 | Carry-over decision input | Input area for carry-over decisions |
 
 ```plantuml
-!include ./carrysprint_screen_carryover_dialog.puml
+!include ../ui/screen_carryover_dialog.puml
 ```
