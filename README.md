@@ -24,6 +24,14 @@ The documentation is organized by intent so both humans and AI tools can locate 
     system_architecture.puml
     software_architecture.puml
     database_design.puml
+  /software-method-design
+    software_method_design.md
+    /diagrams
+      /dfd
+        dfd_level1.puml
+      /activity
+        activity_uc02_get_sprint_workspace.puml
+        activity_uc06_apply_carryover.puml
   /ui
     screen_design.puml
     screen_project_select.puml
@@ -37,6 +45,7 @@ The documentation is organized by intent so both humans and AI tools can locate 
 
 - Start with `docs/requirements/software_requirements_specification.md` for the full specification.
 - Use `docs/architecture` for structural diagrams.
+- Use `docs/software-method-design` for phase output documents of software method design.
 - Use `docs/ui` for screen flow and screen-specific mock diagrams.
 - Use `docs/glossary/terms.md` for domain vocabulary.
 

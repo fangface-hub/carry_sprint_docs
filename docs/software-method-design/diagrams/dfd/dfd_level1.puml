@@ -1,0 +1,34 @@
+@startuml CarrySprintDFDLevel1
+
+title CarrySprint Data Flow Diagram (Level 1)
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+actor "User" as user
+rectangle "Web Browser" as browser
+rectangle "P1 Web Gateway Process" as p1
+rectangle "P2 Application Process" as p2
+database "Project SQLite\nproject_<id>.sqlite" as db
+
+user --> browser : Select project\nEdit task\nApply carry-over
+browser --> p1 : HTTP JSON request
+p1 --> p2 : ZeroMQ JSON command
+p2 --> db : SQL read/write
+
+db --> p2 : rowset/result
+p2 --> p1 : ZeroMQ JSON response
+p1 --> browser : HTTP JSON response
+browser --> user : budget-in/budget-out\nresource/calendar\nerror message
+
+note right of p1
+  P1 validates route and payload.
+  P1 never accesses SQLite.
+end note
+
+note right of p2
+  P2 executes domain logic.
+  P2 controls transaction boundary.
+end note
+
+@enduml

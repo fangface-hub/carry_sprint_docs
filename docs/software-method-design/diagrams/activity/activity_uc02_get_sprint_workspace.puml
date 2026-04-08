@@ -1,0 +1,61 @@
+@startuml CarrySprintActivityUC02
+
+title Activity UC-02 Get Sprint Workspace
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+start
+
+:Receive HTTP GET /workspace;
+if (Path params valid?) then (yes)
+  :Build ZeroMQ command\nget_sprint_workspace;
+else (no)
+  :Return 400 INVALID_PATH_PARAM;
+  stop
+endif
+
+:Send command to P2;
+if (ZeroMQ timeout?) then (yes)
+  :Return 504 UPSTREAM_TIMEOUT;
+  stop
+else (no)
+endif
+
+if (P2 status is error?) then (yes)
+  :Map domain error to HTTP code;
+  :Return error response;
+  stop
+else (no)
+endif
+
+:P2 loads sprint, tasks, resources;
+if (Sprint exists?) then (yes)
+else (no)
+  :Return 404 SPRINT_NOT_FOUND;
+  stop
+endif
+
+:Sort tasks by impact and estimate;
+:Initialize cumulative_forecast;
+
+while (Has next task?) is (yes)
+  :Read task fields;
+  if (Estimate or impact is null?) then (yes)
+    :Mark needs_input=true;
+    :Put into budget-out;
+  else (no)
+    if (cumulative + estimate <= available?) then (yes)
+      :Put into budget-in;
+      :Update cumulative;
+    else (no)
+      :Put into budget-out;
+    endif
+  endif
+endwhile (no)
+
+:Compose workspace payload;
+:Return 200 response;
+stop
+
+@enduml

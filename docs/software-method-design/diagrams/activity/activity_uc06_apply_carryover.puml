@@ -1,0 +1,57 @@
+@startuml CarrySprintActivityUC06
+
+title Activity UC-06 Apply Carry-Over
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+start
+
+:Receive HTTP POST /carryover/apply;
+if (JSON payload valid?) then (yes)
+else (no)
+  :Return 400 INVALID_JSON;
+  stop
+endif
+
+:Send apply_carryover command to P2;
+if (P2 transport error?) then (yes)
+  :Return 502 UPSTREAM_UNAVAILABLE;
+  stop
+else (no)
+endif
+
+:P2 starts SQL transaction;
+while (Has next decision item?) is (yes)
+  :Load task by task_id;
+  if (Task exists in sprint?) then (yes)
+  else (no)
+    :Rollback transaction;
+    :Return 404 TASK_NOT_FOUND;
+    stop
+  endif
+
+  if (Decision is carry-over?) then (yes)
+    if (Target sprint provided?) then (yes)
+      if (Target sprint exists?) then (yes)
+        :Move task to target sprint;
+      else (no)
+        :Rollback transaction;
+        :Return 404 TARGET_SPRINT_NOT_FOUND;
+        stop
+      endif
+    else (no)
+      :Clear sprint_id from task;
+    endif
+  else (no)
+    :Keep task in current sprint;
+  endif
+
+  :Increment carry_over_count when moved;
+endwhile (no)
+
+:Commit transaction;
+:Return 200 with applied task list;
+stop
+
+@enduml
