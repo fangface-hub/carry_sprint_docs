@@ -8,7 +8,7 @@ This diagram shows the runtime structure of CarrySprint.
 | --- | --- |
 | Client | Browser-based user access |
 | Server | Go-based server runtime |
-| Inter-process communication path | ZeroMQ-based request and response path |
+| Inter-process communication path | ZeroMQ-based request/response path |
 | Project storage | SQLite-based per-project storage |
 
 ```plantuml
@@ -18,12 +18,23 @@ This diagram shows the runtime structure of CarrySprint.
 ### 1.1 Design Writing Policy
 
 - Do not use `or` to express alternatives.
+  - Bad example: `Use HTTP/1.1 or HTTP/2 over HTTPS.`
+  - Good example:
+    - Split guideline: Keep the design element in each item. Use the following options:
+      - `Use HTTP/1.1 over HTTPS.`
+      - `Use HTTP/2 over HTTPS.`
 - Do not use `and` to join parallel elements.
+  - Bad example: `Define conditions and behavior explicitly.`
+  - Good example:
+    - Split guideline: Keep the design context in each item. Cover all of the following:
+      - `Define conditions explicitly.`
+      - `Define behavior explicitly.`
 - Do not use `except` to define exclusion.
 - Do not use passive voice.
 - Do not use `it is necessary`.
 - Write one sentence for one meaning.
-- Define conditions and behavior explicitly.
+- Define conditions explicitly.
+- Define behavior explicitly.
 - Treat the `else` clause of a Go `if` statement as an exception path. Do not write assumed normal handling in an `else` clause.
 - Treat the `default` clause of a Go `switch` statement as an exception path. Do not write assumed normal handling in a `default` clause.
 
@@ -34,7 +45,7 @@ This diagram shows the software component structure of CarrySprint.
 | Element | Description |
 | --- | --- |
 | Browser client | User-facing web client |
-| API gateway | HTTP entry point and request routing boundary |
+| API gateway | HTTP entry point with request routing boundary |
 | Application component | MVC-based application logic |
 | SQLite | Per-project persistent storage |
 
@@ -62,7 +73,10 @@ This diagram shows the logical database structure for each project.
 - Use SQLite as the database engine.
 - Isolate data by project with one SQLite file per project.
 - Use project_{id}.sqlite as the standard file naming format.
-- Manage resource information and the working-day calendar in SQLite.
+- Manage resource information in SQLite.
+- Manage the working-day calendar in SQLite.
+- Manage user information in SQLite.
+- Manage project role assignments in SQLite.
 
 ## 4. Screen Design
 
@@ -81,17 +95,34 @@ This diagram shows the screen structure of the browser client.
 
 - Run the client in a web browser.
 - Require no additional software installation on the client side.
-- Exclude progress-monitoring UI and focus on selection and adjustment.
-- Center the screen layout on budget-in and budget-out visualization.
+- Exclude progress-monitoring UI.
+- Focus on selection.
+- Focus on adjustment.
+- Center the screen layout on budget-in visualization.
+- Center the screen layout on budget-out visualization.
 
 ### 4.2 Common User Interface Requirements
 
-- Implement the UI structure and elements defined in this specification.
-- Ensure major screens render correctly on desktop and mobile widths.
-- Display budget-in, budget-out, impact, and estimated hours with consistent visual rules.
-- Do not display monitoring metrics such as progress rate, delay rate, or productivity evaluation.
+- Implement the UI structure defined in this specification.
+- Implement the UI elements defined in this specification.
+- Ensure major screens render correctly on desktop widths.
+- Ensure major screens render correctly on mobile widths.
+- Display the following values with consistent visual rules:
+  - Budget-in
+  - Budget-out
+  - Impact
+  - Estimated hours
+- Do not display the following monitoring metrics:
+  - Progress rate
+  - Delay rate
+  - Productivity evaluation, etc.
 - Make primary operations executable within three clicks.
-- Represent states with labels and icons, not color alone.
+- Represent states with the following methods:
+  - Labels
+  - Icons
+  - Not color alone
+- Resolve the default locale from the client language when locale configuration is available.
+- Resolve the default locale from the client region when locale configuration is available.
 
 ### 4.3 Screen-specific Visual Design
 
@@ -161,3 +192,38 @@ This diagram shows the external appearance of the carry-over review dialog.
 ```plantuml
 !include ../ui/screen_carryover_dialog.puml
 ```
+
+#### 4.3.6 User Management Screen
+
+This diagram shows the external appearance of the user management screen.
+
+| Element | Description |
+| --- | --- |
+| User list | List area for registered users |
+| User edit form | Edit area for user registration/modification |
+| Project role assignment | Assignment area for project administrator role, project assignee role |
+
+```plantuml
+!include ../ui/screen_user_management.puml
+```
+
+## 5. User Management Requirements
+
+### 5.1 User Operation Requirements
+
+- Register a user from the user management screen.
+- Modify registered user information from the user management screen.
+- Delete a registered user from the user management screen.
+
+### 5.2 Project Role Requirements
+
+- Assign an administrator role to a user for a specified project from the user management screen.
+- Assign an assignee role to a user for a specified project from the user management screen.
+
+## 6. Internationalization Requirements
+
+### 6.1 Default Locale Resolution
+
+- Change the default locale according to the client language.
+- Change the default locale according to the client region.
+- Use `en` as the default locale when locale configuration is not prepared.

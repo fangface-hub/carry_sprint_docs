@@ -3,7 +3,9 @@
 ## 1. Purpose
 
 This document defines software methods that realize the requirements in `docs/requirements/software_requirements_specification.md`.
-This document defines inter-process interfaces, process inputs and outputs, process conditions, process behaviors.
+This document defines inter-process interfaces.
+This document defines process input/output.
+This document defines process conditions, process behaviors.
 
 ## 2. Scope
 
@@ -19,9 +21,12 @@ Target functional scope:
 - Project selection
 - Sprint workspace retrieval
 - Task update
-- Resource settings retrieval and update
-- Working-day calendar retrieval and update
+- Resource settings retrieval/update
+- Working-day calendar retrieval/update
 - Carry-over review apply
+- User registration/modification/deletion
+- Project role assignment
+- Default locale resolution by client language/region
 
 ## 3. Process Model
 
@@ -35,7 +40,7 @@ Target functional scope:
 ### 3.2 Data Store Access Rule
 
 - P1 never accesses SQLite directly.
-- P2 handles all SQLite read and write operations.
+- P2 handles all SQLite read/write operations.
 - One project uses one SQLite file with format `project_<id>.sqlite`.
 
 ### 3.3 Data Flow Diagram
@@ -52,7 +57,8 @@ The following DFD defines process-level data flow among browser, P1, P2, SQLite.
 
 Protocol:
 
-- HTTP/1.1 or HTTP/2 over HTTPS
+- HTTP/1.1 over HTTPS
+- HTTP/2 over HTTPS
 - Content-Type: `application/json`
 
 Request header rules:
@@ -87,6 +93,13 @@ Endpoint contracts:
 | API-07 | GET | /api/projects/{project_id}/calendar | optional month range | calendar days |
 | API-08 | PUT | /api/projects/{project_id}/calendar | calendar day list | saved calendar days |
 | API-09 | POST | /api/projects/{project_id}/sprints/{sprint_id}/carryover/apply | carry-over decision list | applied task list |
+| API-10 | GET | /api/users | none | user list |
+| API-11 | POST | /api/users | user fields | registered user |
+| API-12 | PATCH | /api/users/{user_id} | user fields | updated user |
+| API-13 | DELETE | /api/users/{user_id} | none | none |
+| API-14 | GET | /api/projects/{project_id}/roles | none | project role list |
+| API-15 | PUT | /api/projects/{project_id}/roles | role assignment list | saved role assignment list |
+| API-16 | GET | /api/locales/default | none | resolved default locale |
 
 ### 4.2 Interface IF-ZMQ-01 (P1 -> P2)
 
@@ -135,6 +148,13 @@ Command mapping:
 | `get_calendar` | API-07 |
 | `save_calendar` | API-08 |
 | `apply_carryover` | API-09 |
+| `list_users` | API-10 |
+| `register_user` | API-11 |
+| `update_user` | API-12 |
+| `delete_user` | API-13 |
+| `get_project_roles` | API-14 |
+| `save_project_roles` | API-15 |
+| `resolve_default_locale` | API-16 |
 
 ### 4.3 Interface IF-DB-01 (P2 -> SQLite)
 
@@ -151,8 +171,10 @@ Primary tables:
 - `resources`
 - `working_day_calendar`
 - `task_resource_allocations`
+- `users`
+- `project_roles`
 
-## 5. Process Input and Output
+## 5. Process Input/Output
 
 ### 5.1 P1 Web Gateway Process
 
@@ -206,7 +228,7 @@ P2 persistence rules:
 - Condition: all SQL statements finish successfully. Behavior: commit transaction.
 - Condition: any SQL statement fails. Behavior: rollback transaction, return `PERSISTENCE_ERROR`.
 
-## 6. Use Case Conditions and Behaviors
+## 6. Use Case Conditions/Behaviors
 
 ### 6.1 UC-01 List Projects
 
@@ -216,8 +238,9 @@ P2 persistence rules:
 
 ### 6.2 UC-02 Get Sprint Workspace
 
-- Condition: project exists, sprint exists. Behavior: read tasks in sprint scope, classify budget-in and budget-out.
-- Condition: task estimated hours or impact value is null. Behavior: classify task as budget-out with flag `needs_input=true`.
+- Condition: project exists, sprint exists. Behavior: read tasks in sprint scope, classify budget-in tasks, budget-out tasks.
+- Condition: task estimated hours is null. Behavior: classify task as budget-out with flag `needs_input=true`.
+- Condition: task impact value is null. Behavior: classify task as budget-out with flag `needs_input=true`.
 - Condition: sprint record does not exist. Behavior: return `SPRINT_NOT_FOUND`.
 
 Classification behavior:
@@ -246,11 +269,51 @@ Classification behavior:
 
 ### 6.6 UC-06 Apply Carry-Over
 
-- Condition: task belongs to current sprint and decision is carry-over. Behavior: clear sprint_id or move to next sprint based on input target.
+- Condition: task belongs to current sprint, decision is carry-over, input target exists. Behavior: move sprint_id to next sprint.
+- Condition: task belongs to current sprint, decision is carry-over, input target does not exist. Behavior: clear sprint_id.
 - Condition: task is marked as keep. Behavior: keep sprint_id unchanged.
 - Condition: target next sprint does not exist. Behavior: return `TARGET_SPRINT_NOT_FOUND`.
 
-### 6.7 Activity Diagrams
+### 6.7 UC-07 List Users
+
+- Condition: request has valid header `X-Request-Id`. Behavior: P1 sends `list_users` to P2.
+- Condition: P2 finds user rows. Behavior: return sorted user list.
+- Condition: P2 finds no rows. Behavior: return empty list.
+
+### 6.8 UC-08 Register User
+
+- Condition: user_id does not exist in `users` table. Behavior: insert user row, set `created_at`.
+- Condition: user_id already exists. Behavior: return `DUPLICATE_USER_ID`.
+
+### 6.9 UC-09 Update User
+
+- Condition: target user exists. Behavior: update mutable user fields, set `updated_at`.
+- Condition: target user does not exist. Behavior: return `USER_NOT_FOUND`.
+
+### 6.10 UC-10 Delete User
+
+- Condition: target user exists. Behavior: delete user row plus all associated project role rows in one transaction.
+- Condition: target user does not exist. Behavior: return `USER_NOT_FOUND`.
+
+### 6.11 UC-11 Get Project Roles
+
+- Condition: project exists. Behavior: read all role assignment rows for the project. Return role list.
+- Condition: project does not exist. Behavior: return `PROJECT_NOT_FOUND`.
+
+### 6.12 UC-12 Save Project Roles
+
+- Condition: payload passes schema check. Behavior: replace project role set in one transaction.
+- Condition: role value is not in allowed set (`administrator`, `assignee`). Behavior: return `INVALID_ROLE`.
+- Condition: user_id in payload does not exist in `users` table. Behavior: return `USER_NOT_FOUND`.
+- Condition: project does not exist. Behavior: return `PROJECT_NOT_FOUND`.
+
+### 6.13 UC-13 Resolve Default Locale
+
+- Condition: locale configuration contains an entry matching client language/region. Behavior: return matched locale.
+- Condition: locale configuration has no entry matching client language/region. Behavior: return fallback locale `en`.
+- Condition: client language/region cannot be parsed from request context. Behavior: return fallback locale `en`.
+
+### 6.14 Activity Diagrams
 
 The following activity diagram defines UC-02 control flow with condition branches.
 
@@ -258,7 +321,7 @@ The following activity diagram defines UC-02 control flow with condition branche
 !include ./diagrams/activity/activity_uc02_get_sprint_workspace.puml
 ```
 
-The following activity diagram defines UC-06 control flow with transaction and rollback branches.
+The following activity diagram defines UC-06 control flow with transaction/rollback branches.
 
 ```plantuml
 !include ./diagrams/activity/activity_uc06_apply_carryover.puml
@@ -287,16 +350,85 @@ Error code table:
 | INVALID_RESOURCE_CAPACITY | Resource capacity value invalid | 422 |
 | DUPLICATE_CALENDAR_DATE | Calendar date duplicated in input | 422 |
 | TARGET_SPRINT_NOT_FOUND | Carry-over target sprint missing | 404 |
-| PERSISTENCE_ERROR | SQLite read or write failed | 500 |
+| PROJECT_NOT_FOUND | Project row not found | 404 |
+| USER_NOT_FOUND | User row not found | 404 |
+| DUPLICATE_USER_ID | User identifier duplicated | 422 |
+| INVALID_ROLE | Role value not in allowed set | 422 |
+| PERSISTENCE_ERROR | SQLite read failure, SQLite write failure | 500 |
 | UPSTREAM_UNAVAILABLE | ZeroMQ transport failure | 502 |
 | UPSTREAM_TIMEOUT | ZeroMQ timeout | 504 |
 
-## 8. Timeouts and Retries
+## 8. Timeouts/Retries
 
 - P1 timeout for IF-ZMQ-01 uses 3000 ms.
 - P1 performs no automatic retry for write commands.
 - P1 performs one retry for read commands after timeout.
 - P2 SQL busy timeout uses 2000 ms.
+
+## 9. Requirements Traceability Matrix
+
+This table traces each requirement in `docs/requirements/software_requirements_specification.md` to the design element in this document that realizes it.
+
+### 9.1 System/Software Architecture
+
+| Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-SYS-01 | §1 System Architecture | ZeroMQ-based inter-process communication between client and server | §4.2 IF-ZMQ-01 | ZeroMQ REQ/REP protocol, JSON request/response schema, command mapping |
+| SRS-SYS-02 | §1 System Architecture | SQLite-based per-project storage | §3.2 Data Store Access Rule, §4.3 IF-DB-01 | P2-only SQLite access rule, SQL read/write access mode |
+| SRS-SYS-03 | §2 Software Architecture | API gateway as HTTP entry point with request routing boundary | §4.1 IF-HTTP-01, §5.1 P1 | HTTPS endpoint contracts, P1 input validation rules, P1 response mapping rules |
+| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §5.2 P2, §6.1 to 6.13 | P2 command dispatch rules, use case handlers UC-01 through UC-13 |
+
+### 9.2 Database
+
+| Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-DB-01 | §3.1 Database Policy | Use SQLite as the database engine | §4.3 IF-DB-01 | SQL read/transaction access modes |
+| SRS-DB-02 | §3.1 Database Policy | Isolate data by project with one SQLite file per project | §3.2 Data Store Access Rule | One project uses one SQLite file rule |
+| SRS-DB-03 | §3.1 Database Policy | Use `project_{id}.sqlite` as the standard file naming format | §3.2 Data Store Access Rule | File format `project_<id>.sqlite` |
+| SRS-DB-04 | §3.1 Database Policy | Manage resource information plus working-day calendar in SQLite | §4.3 IF-DB-01 | Primary tables `resources`, `working_day_calendar` |
+| SRS-DB-05 | §3.1 Database Policy | Manage user information plus project role assignments in SQLite | §4.3 IF-DB-01 | Primary tables `users`, `project_roles` |
+
+### 9.3 Screen Design/UI Policy
+
+| Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-UI-01 | §4.1 Screen Design Policy | Run the client in a web browser | §4.1 IF-HTTP-01 | HTTP/1.1 over HTTPS browser interface, HTTP/2 over HTTPS browser interface |
+| SRS-UI-02 | §4.1 Screen Design Policy | Require no additional software installation on the client side | §4.1 IF-HTTP-01 | Browser-only HTTPS interface; no client-side process required |
+| SRS-UI-03 | §4.1 Screen Design Policy | Exclude progress-monitoring UI | §4.1 IF-HTTP-01 | No monitoring API endpoint defined |
+| SRS-UI-04 | §4.1 Screen Design Policy | Center screen layout on budget-in/budget-out visualization | §6.2 UC-02 | Task classification logic by cumulative forecast hours vs. available hours |
+| SRS-UI-05 | §4.2 Common UI Requirements | Implement UI structure plus elements defined in this specification | §4.1 IF-HTTP-01 | Endpoint contracts cover all defined screens |
+| SRS-UI-06 | §4.2 Common UI Requirements | Display budget-in, budget-out, impact, estimated hours with consistent visual rules | §4.1 API-03, §6.2 UC-02 | Sprint workspace response payload includes budget-in list, budget-out list, totals |
+| SRS-UI-07 | §4.2 Common UI Requirements | Do not display monitoring metrics | §4.1 IF-HTTP-01 | No monitoring data field included in any response payload |
+| SRS-UI-08 | §4.2 Common UI Requirements | Make primary operations executable within three clicks | §4.1 API-01, API-02, API-03 | Project list, project summary, sprint workspace accessible via single API call each |
+| SRS-UI-09 | §4.2 Common UI Requirements | Represent states with labels, icons, not color alone | - | Client-side rendering concern; no server-side method design element |
+
+### 9.4 Screen-specific Requirements
+
+| Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-SC-01 | §4.3.1 Project Select Screen | Display project search plus project list plus project summary | §6.1 UC-01, §4.1 API-01, API-02 | `list_projects` command, `get_project_summary` command |
+| SRS-SC-02 | §4.3.2 Sprint Workspace Screen | Display budget-in tasks plus budget-out tasks plus task editing area | §6.2 UC-02, §6.3 UC-03, §4.1 API-03, API-04 | `get_sprint_workspace` command with classification behavior, `update_task` command |
+| SRS-SC-03 | §4.3.3 Resource Settings Screen | Display resource table plus resource edit form | §6.4 UC-04, §4.1 API-05, API-06 | `list_resources` command, `save_resources` command |
+| SRS-SC-04 | §4.3.4 Working-Day Calendar Screen | Display calendar grid plus calendar control area | §6.5 UC-05, §4.1 API-07, API-08 | `get_calendar` command, `save_calendar` command |
+| SRS-SC-05 | §4.3.5 Carry-Over Review Dialog | Display deferred task review plus carry-over decision input | §6.6 UC-06, §4.1 API-09 | `apply_carryover` command with keep/move decision handling |
+| SRS-SC-06 | §4.3.6 User Management Screen | Display user list plus user edit form plus project role assignment area | §6.7 to 6.12, §4.1 API-10 to API-15 | User CRUD commands, `get_project_roles` command, `save_project_roles` command |
+
+### 9.5 User Management Requirements
+
+| Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-UM-01 | §5.1 User Operation Requirements | Register a user from the user management screen | §6.8 UC-08, §4.1 API-11 | `register_user` command with duplicate check |
+| SRS-UM-02 | §5.1 User Operation Requirements | Modify registered user information from the user management screen | §6.9 UC-09, §4.1 API-12 | `update_user` command with existence check |
+| SRS-UM-03 | §5.1 User Operation Requirements | Delete a registered user from the user management screen | §6.10 UC-10, §4.1 API-13 | `delete_user` command with cascade role deletion in one transaction |
+| SRS-UM-04 | §5.2 Project Role Requirements | Assign an administrator role to a user for a specified project | §6.12 UC-12, §4.1 API-15 | `save_project_roles` command with role value `administrator` |
+| SRS-UM-05 | §5.2 Project Role Requirements | Assign an assignee role to a user for a specified project | §6.12 UC-12, §4.1 API-15 | `save_project_roles` command with role value `assignee` |
+
+### 9.6 Internationalization Requirements
+
+| Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-I18N-01 | §6.1 Default Locale Resolution | Change default locale according to client language/region | §6.13 UC-13, §4.1 API-16 | `resolve_default_locale` command with locale matching behavior |
+| SRS-I18N-02 | §6.1 Default Locale Resolution | Use `en` when locale configuration is not prepared | §6.13 UC-13 | fallback locale `en` |
 
 ## 9. Traceability to Requirements
 
@@ -304,12 +436,15 @@ Error code table:
 | --- | --- |
 | System architecture with browser, server, IPC, SQLite | Section 2, Section 4 |
 | Process-level data flow definition | Section 3.3 |
-| ZeroMQ request and response path | Section 4.2, Section 8 |
+| ZeroMQ request/response path | Section 4.2, Section 8 |
 | Per-project SQLite policy | Section 3.2, Section 4.3 |
 | Resource information handling | API-05, API-06, UC-04 |
 | Working-day calendar handling | API-07, API-08, UC-05 |
-| Budget-in and budget-out UI support | API-03, UC-02, Section 6.7 |
-| Carry-over decision support | API-09, UC-06, Section 6.7 |
+| Budget-in/budget-out UI support | API-03, UC-02, Section 6.13 |
+| Carry-over decision support | API-09, UC-06, Section 6.13 |
+| User registration/modification/deletion | API-10, API-11, API-12, API-13, UC-07 through UC-10 |
+| Project role assignment | API-14, API-15, UC-11, UC-12 |
+| Default locale resolution | API-16, UC-13 |
 
 ## 10. Implementation Constraints
 

@@ -32,6 +32,8 @@ The documentation is organized by intent so both humans and AI tools can locate 
       /activity
         activity_uc02_get_sprint_workspace.puml
         activity_uc06_apply_carryover.puml
+  /software-detailed-design
+    software_detailed_design.md
   /ui
     screen_design.puml
     screen_project_select.puml
@@ -46,6 +48,7 @@ The documentation is organized by intent so both humans and AI tools can locate 
 - Start with `docs/requirements/software_requirements_specification.md` for the full specification.
 - Use `docs/architecture` for structural diagrams.
 - Use `docs/software-method-design` for phase output documents of software method design.
+- Use `docs/software-detailed-design` for phase output documents of software detailed design.
 - Use `docs/ui` for screen flow and screen-specific mock diagrams.
 - Use `docs/glossary/terms.md` for domain vocabulary.
 
