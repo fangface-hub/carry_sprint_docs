@@ -76,6 +76,23 @@ p2/
     code.go                 Domain error code string constants.
 ```
 
+### 2.3 MVC Responsibility Mapping
+
+This section defines the MVC role boundaries in the detailed design.
+
+| MVC Role | Package | Responsibility |
+| --- | --- | --- |
+| Controller | `p2/handler`, `p2/dispatcher` | Accept command input from P1, execute use case flow, orchestrate domain processing order |
+| Model | `p2/model`, `p2/repository` | Define domain entities and command params, execute persistence read/write against SQLite |
+| View | `p1/model/http.go`, P1 handler response mapping in §7.1 | Define HTTP response schema, map ZMQ domain result to HTTP response body |
+
+Rules:
+
+- P1 does not execute domain decision logic. P1 validates transport-level input and maps protocol responses.
+- P2 is the application component that performs MVC-based domain logic.
+- P2 repository accesses SQLite. P1 never accesses SQLite directly.
+- P2 does not generate HTTP response format directly. P1 constructs HTTP response output.
+
 ## 3. Domain Entity Struct Definitions
 
 ### 3.1 Project
@@ -1119,3 +1136,9 @@ Note: If `locale_config` is not prepared, P2 skips Q1. P2 directly applies fallb
 | §6.1 to 6.13 Use case conditions/behaviors | §8.1 to 8.15 Use case handler processing steps |
 | §7 Error model | §9 Error Code Reference |
 | §8 Timeouts/retries | §7.1 Common Steps (transport error, timeout handling) |
+
+## 11. Traceability to Requirements
+
+| Requirement ID | SRS Section | Requirement Summary | Detailed Design Section | Design Element |
+| --- | --- | --- | --- | --- |
+| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §2.3 MVC Responsibility Mapping, §8 P2 Use Case Handler Design, §7.1 Common Steps | MVC role boundaries, P2 use case orchestration, P1 response construction boundary |

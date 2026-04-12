@@ -51,6 +51,22 @@ The following DFD defines process-level data flow among browser, P1, P2, SQLite.
 !include ./diagrams/dfd/dfd_level1.puml
 ```
 
+### 3.4 MVC Responsibility Mapping
+
+This section defines MVC boundaries across P1 and P2 in method design.
+
+| MVC Role | Process/Interface Element | Responsibility |
+| --- | --- | --- |
+| Controller | P2 command dispatcher and use case handlers (Section 5.2, Section 6) | Execute command-level control flow and domain decision order |
+| Model | P2 persistence access rules plus IF-DB-01 (Section 3.2, Section 4.3) | Manage domain state and SQLite read/write operations |
+| View | P1 HTTP response mapping plus IF-HTTP-01 response schema (Section 5.1, Section 4.1) | Build external response representation for browser clients |
+
+Boundary rules:
+
+- P1 does not execute domain decision logic.
+- P2 does not expose SQLite internals to P1.
+- P2 returns domain result payload. P1 maps domain result payload to HTTP response output.
+
 ## 4. Inter-Process Interfaces
 
 ### 4.1 Interface IF-HTTP-01 (Browser -> P1)
@@ -376,7 +392,7 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | SRS-SYS-01 | §1 System Architecture | ZeroMQ-based inter-process communication between client and server | §4.2 IF-ZMQ-01 | ZeroMQ REQ/REP protocol, JSON request/response schema, command mapping |
 | SRS-SYS-02 | §1 System Architecture | SQLite-based per-project storage | §3.2 Data Store Access Rule, §4.3 IF-DB-01 | P2-only SQLite access rule, SQL read/write access mode |
 | SRS-SYS-03 | §2 Software Architecture | API gateway as HTTP entry point with request routing boundary | §4.1 IF-HTTP-01, §5.1 P1 | HTTPS endpoint contracts, P1 input validation rules, P1 response mapping rules |
-| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §5.2 P2, §6.1 to 6.13 | P2 command dispatch rules, use case handlers UC-01 through UC-13 |
+| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §3.4 MVC Responsibility Mapping, §5.2 P2, §6.1 to 6.13 | MVC role boundaries, P2 command dispatch rules, use case handlers UC-01 through UC-13 |
 
 ### 9.2 Database
 
