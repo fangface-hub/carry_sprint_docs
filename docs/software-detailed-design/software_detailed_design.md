@@ -16,65 +16,116 @@ This document defines SQL query design.
 
 ```text
 p1/
-  main.go                   Entry point. Initializes router and ZMQ client. Starts HTTPS server.
-  router/
-    router.go               Registers all route handlers to the HTTP multiplexer.
-  handler/
-    projects.go             HandleListProjects (API-01), HandleGetProjectSummary (API-02)
-    workspace.go            HandleGetSprintWorkspace (API-03)
-    tasks.go                HandleUpdateTask (API-04)
-    resources.go            HandleListResources (API-05), HandleSaveResources (API-06)
-    calendar.go             HandleGetCalendar (API-07), HandleSaveCalendar (API-08)
-    carryover.go            HandleApplyCarryover (API-09)
-    users.go                HandleListUsers (API-10), HandleRegisterUser (API-11),
-                            HandleUpdateUser (API-12), HandleDeleteUser (API-13)
-    roles.go                HandleGetProjectRoles (API-14), HandleSaveProjectRoles (API-15)
-    locale.go               HandleGetDefaultLocale (API-16)
-  middleware/
-    request_id.go           Validates presence of X-Request-Id header. Returns 400 if absent.
-  zmq/
-    client.go               ZMQ REQ socket wrapper. Provides Send(req ZMQRequest) (ZMQResponse, error).
-  model/
-    zmq.go                  ZMQRequest, ZMQResponse, ZMQError struct definitions.
-    http.go                 HTTPResponse struct definition.
-  apperror/
-    code.go                 Error code string constants for P1-level errors.
+  main.go                   Entry point. Wires HTTP transport and ZMQ gateway.
+  transport/
+    http/
+      router.go             Registers API routes.
+      middleware/
+        request_id.go       Validates X-Request-Id.
+      handler/
+        projects.go         API-01, API-02 handlers
+        workspace.go        API-03 handler
+        tasks.go            API-04 handler
+        resources.go        API-05, API-06 handlers
+        calendar.go         API-07, API-08 handlers
+        carryover.go        API-09 handler
+        users.go            API-10, API-11, API-12, API-13 handlers
+        roles.go            API-14, API-15 handlers
+        locale.go           API-16 handler
+      presenter/
+        response.go         Maps domain result from P2 into HTTP response schema.
+  gateway/
+    zmq/
+      client.go             ZMQ REQ wrapper.
+      codec.go              JSON encode/decode for IF-ZMQ-01.
+  shared/
+    model/
+      zmq.go                ZMQRequest, ZMQResponse, ZMQError.
+      http.go               HTTPResponse schema.
+    apperror/
+      code.go               P1-level transport and mapping error codes.
 ```
+
+P1 module intent:
+
+- `transport/http/handler` handles protocol input validation only.
+- `transport/http/presenter` handles protocol output mapping only.
+- `gateway/zmq` handles inter-process communication only.
+- `shared` stores contracts shared by P1 internal modules.
 
 ### 2.2 P2 Package Structure
 
 ```text
 p2/
-  main.go                   Entry point. Opens SQLite connections. Initializes ZMQ server and dispatcher.
-  dispatcher/
-    dispatcher.go           Routes ZMQ command string to registered handler function.
-  handler/
-    projects.go             ListProjects, GetProjectSummary
-    workspace.go            GetSprintWorkspace
-    tasks.go                UpdateTask
-    resources.go            ListResources, SaveResources
-    calendar.go             GetCalendar, SaveCalendar
-    carryover.go            ApplyCarryover
-    users.go                ListUsers, RegisterUser, UpdateUser, DeleteUser
-    roles.go                GetProjectRoles, SaveProjectRoles
-    locale.go               ResolveDefaultLocale
-  repository/
-    db.go                   SQLite connection management. OpenSystemDB() and OpenProjectDB(projectID string).
-    projects.go             SelectProjects, SelectProjectByID, SelectProjectCount
-    sprints.go              SelectSprintByID
-    tasks.go                SelectTasksBySprintID, UpdateTaskFields
-    resources.go            SelectResources, ReplaceResources
-    calendar.go             SelectCalendarByMonth, UpsertCalendarDays
-    carryover.go            ApplyCarryoverDecisions
-    users.go                SelectUsers, SelectUserByID, InsertUser, UpdateUserFields, DeleteUserByID
-    roles.go                SelectProjectRoles, ReplaceProjectRoles, DeleteRolesByUserID
-    locale.go               SelectLocaleConfigByLanguageRegion
-  model/
-    entity.go               Domain entity struct definitions.
-    command.go              ZMQ command parameter struct definitions.
-  apperror/
-    code.go                 Domain error code string constants.
+  main.go                   Entry point. Wires ZMQ adapter, application use cases, repositories.
+  adapter/
+    zmq/
+      server.go             ZMQ REP listener.
+      dispatcher.go         Routes command to use case executor.
+  application/
+    usecase/
+      projects.go           ListProjects, GetProjectSummary
+      workspace.go          GetSprintWorkspace
+      tasks.go              UpdateTask
+      resources.go          ListResources, SaveResources
+      calendar.go           GetCalendar, SaveCalendar
+      carryover.go          ApplyCarryover
+      users.go              ListUsers, RegisterUser, UpdateUser, DeleteUser
+      roles.go              GetProjectRoles, SaveProjectRoles
+      locale.go             ResolveDefaultLocale
+    validator/
+      tasks.go              Input rule checks for UC-03
+      resources.go          Input rule checks for UC-04
+      calendar.go           Input rule checks for UC-05
+      carryover.go          Input rule checks for UC-06
+      users.go              Input rule checks for UC-08 to UC-10
+      roles.go              Input rule checks for UC-11, UC-12
+    presenter/
+      response.go           Builds command response payload.
+  domain/
+    model/
+      entity.go             Domain entities.
+      command.go            Command parameter models.
+    service/
+      workspace_classifier.go  Budget-in and budget-out classification policy.
+      carryover_policy.go      Carry-over decision policy.
+    repository/
+      interface.go          Repository interfaces used by use cases.
+  infrastructure/
+    sqlite/
+      db.go                 OpenSystemDB and OpenProjectDB.
+      query/
+        projects.sql.go     Query set for projects.
+        sprints.sql.go      Query set for sprints.
+        tasks.sql.go        Query set for tasks.
+        resources.sql.go    Query set for resources.
+        calendar.sql.go     Query set for calendar.
+        carryover.sql.go    Query set for carry-over.
+        users.sql.go        Query set for users.
+        roles.sql.go        Query set for project roles.
+        locale.sql.go       Query set for locale config.
+    repository/
+      projects_repo.go      Implementation of projects repository interface.
+      tasks_repo.go         Implementation of tasks repository interface.
+      resources_repo.go     Implementation of resources repository interface.
+      calendar_repo.go      Implementation of calendar repository interface.
+      carryover_repo.go     Implementation of carry-over repository interface.
+      users_repo.go         Implementation of users repository interface.
+      roles_repo.go         Implementation of roles repository interface.
+      locale_repo.go        Implementation of locale repository interface.
+  shared/
+    apperror/
+      code.go               Domain error code constants.
 ```
+
+P2 module intent:
+
+- `adapter/zmq` isolates transport protocol concerns.
+- `application/usecase` orchestrates use case flow.
+- `application/validator` isolates validation rules from orchestration.
+- `domain/service` centralizes business policy logic.
+- `domain/repository/interface.go` defines persistence ports.
+- `infrastructure/repository` plus `infrastructure/sqlite` provide persistence adapters.
 
 ### 2.3 MVC Responsibility Mapping
 
@@ -82,15 +133,17 @@ This section defines the MVC role boundaries in the detailed design.
 
 | MVC Role | Package | Responsibility |
 | --- | --- | --- |
-| Controller | `p2/handler`, `p2/dispatcher` | Accept command input from P1, execute use case flow, orchestrate domain processing order |
-| Model | `p2/model`, `p2/repository` | Define domain entities and command params, execute persistence read/write against SQLite |
-| View | `p1/model/http.go`, P1 handler response mapping in §7.1 | Define HTTP response schema, map ZMQ domain result to HTTP response body |
+| Controller | `p2/adapter/zmq/dispatcher.go`, `p2/application/usecase/*` | Accept command input from P1, execute use case flow, orchestrate domain processing order |
+| Model | `p2/domain/*`, `p2/infrastructure/repository/*`, `p2/infrastructure/sqlite/*` | Define domain model and business policy, execute persistence read/write against SQLite |
+| View | `p1/transport/http/presenter/response.go`, `p1/shared/model/http.go` | Define HTTP response schema, map domain result to HTTP response body |
 
 Rules:
 
 - P1 does not execute domain decision logic. P1 validates transport-level input and maps protocol responses.
 - P2 is the application component that performs MVC-based domain logic.
-- P2 repository accesses SQLite. P1 never accesses SQLite directly.
+- Domain layer depends on no transport module.
+- Application layer depends on domain interfaces and domain services.
+- Infrastructure layer depends on domain repository interfaces.
 - P2 does not generate HTTP response format directly. P1 constructs HTTP response output.
 
 ## 3. Domain Entity Struct Definitions
