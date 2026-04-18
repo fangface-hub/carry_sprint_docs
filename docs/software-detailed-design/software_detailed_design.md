@@ -296,6 +296,18 @@ P1 browser UI route rules:
 - `router.go` shall resolve `project_id` from browser route path parameters.
 - `router.go` shall resolve `sprint_id` from browser route path parameters.
 - `router.go` shall detect carry-over dialog state from query parameter `dialog=carryover`.
+- Browser UI routes shall return `200 OK` with `Content-Type: text/html` and browser UI shell content.
+
+Browser UI API integration acceptance criteria:
+
+- Top Page (`/`) shall integrate API-10, API-17, API-18, API-19 for menu and visibility operations.
+- Project Select Screen (`/projects`) shall integrate API-01 and API-02.
+- Sprint Workspace Screen (`/projects/{project_id}/sprints/{sprint_id}/workspace`) shall integrate API-03 and API-04.
+- Carry-Over Review Dialog route shall integrate API-03 and API-09.
+- Resource Settings Screen shall integrate API-05 and API-06.
+- Working-Day Calendar Screen shall integrate API-07 and API-08.
+- User Management Screen (`/users`) shall integrate API-10, API-11, API-12, API-13, API-14, API-15.
+- Integration completion for each screen requires both data rendering from read APIs and write-path execution through corresponding write APIs.
 
 ### 5.1 API-01 GET /api/projects
 
@@ -758,9 +770,9 @@ P1 router registration rules:
 - `router.go` shall return `404 ROUTE_NOT_FOUND` for undefined browser UI routes.
 - `router.go` shall return `404 ROUTE_NOT_FOUND` for undefined API routes.
 
-### 7.1 Common Steps for All Handlers
+### 7.1 Common Steps for All API Handlers
 
-P1 executes these steps before API-specific logic for every handler:
+P1 executes these steps before API-specific logic for every API handler:
 
 1. Read `X-Request-Id` from the HTTP request header. If absent, return `400` with `INVALID_PATH_PARAM`.
 2. Extract path parameters from the URL.

@@ -78,12 +78,17 @@ Protocol:
 
 - HTTP/1.1 over HTTPS
 - HTTP/2 over HTTPS
-- Content-Type: `application/json`
+
+Content type and response format rules:
+
+- Browser UI routes (`/`, `/projects`, `/users`, project screen routes) return `text/html` browser UI shell.
+- API routes (`/api/...`) return `application/json` with the common response schema.
 
 Request header rules:
 
-- `X-Request-Id` is required.
-- `Content-Type` is required for write requests.
+- Browser UI routes do not require `X-Request-Id`.
+- API routes require `X-Request-Id`.
+- API write requests require `Content-Type: application/json`.
 
 Response body common schema:
 
@@ -118,6 +123,17 @@ Browser UI route rules:
 - P1 shall resolve sprint context from `sprint_id` path parameter.
 - P1 shall open the carry-over review dialog on the sprint workspace route.
 - P1 shall resolve the carry-over review dialog state from query parameter `dialog=carryover`.
+
+Browser UI API integration acceptance criteria:
+
+- Top Page (`/`) shall call API-10 to resolve selectable users, API-17 to resolve enabled menu buttons, and API-18/API-19 to read/write user menu visibility.
+- Project Select Screen (`/projects`) shall call API-01 and may call API-02 for selected project detail.
+- Sprint Workspace Screen (`/projects/{project_id}/sprints/{sprint_id}/workspace`) shall call API-03 and may call API-04 for task update actions.
+- Carry-Over Review Dialog route shall call API-03 and API-09.
+- Resource Settings Screen shall call API-05 and API-06.
+- Working-Day Calendar Screen shall call API-07 and API-08.
+- User Management Screen (`/users`) shall call API-10/API-11/API-12/API-13 and API-14/API-15.
+- A screen is considered integrated when it renders data from its required APIs and applies user write actions through the corresponding write APIs.
 
 Endpoint contracts:
 
