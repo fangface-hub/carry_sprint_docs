@@ -1,0 +1,32 @@
+@startuml CarrySprintTopPageScreen
+salt
+{
+{T
++ CarrySprint - Top Page
+Signed-in user: [admin v]   [Sign Out]
+}
+--
+"Menu Visibility Settings (Per User)"
+{| 
+{+
+User: [admin v]
+[X] Project Select
+[X] Sprint Workspace
+[X] Resource Settings
+[X] Working-Day Calendar
+[X] User Management
+[Save Menu Settings]
+}
+{+
+"Menu"
+[Project Select]
+[Sprint Workspace]
+[Resource Settings]
+[Working-Day Calendar]
+[User Management]
+}
+|}
+--
+Only enabled menu buttons are displayed for the selected user.
+}
+@enduml

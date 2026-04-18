@@ -1,0 +1,34 @@
+@startuml CarrySprintActivityStartupInitializeAdminUser
+
+title Activity Startup Initialize Admin User
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+start
+
+:P2 startup begins;
+:P2 opens system.sqlite;
+:P2 checks user_id = admin;
+if (Admin user exists?) then (yes)
+  :Skip bootstrap insert;
+  :Continue startup;
+  stop
+else (no)
+endif
+
+:P2 computes password hash for admin;
+:P2 begins SQL transaction;
+:Insert users row for admin;
+:Insert user_credentials row for admin;
+if (All SQL steps succeed?) then (yes)
+  :Commit transaction;
+  :Continue startup;
+  stop
+else (no)
+  :Rollback transaction;
+  :Abort startup with\nINITIAL_USER_BOOTSTRAP_FAILED;
+  stop
+endif
+
+@enduml

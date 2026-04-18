@@ -32,6 +32,8 @@ p1/
         users.go            API-10, API-11, API-12, API-13 handlers
         roles.go            API-14, API-15 handlers
         locale.go           API-16 handler
+        top.go              API-17 handler
+        menu_visibility.go  API-18, API-19 handlers
       presenter/
         response.go         Maps domain result from P2 into HTTP response schema.
   gateway/
@@ -73,6 +75,9 @@ p2/
       users.go              ListUsers, RegisterUser, UpdateUser, DeleteUser
       roles.go              GetProjectRoles, SaveProjectRoles
       locale.go             ResolveDefaultLocale
+      top_menu.go           GetTopMenu
+      menu_visibility.go    GetUserMenuVisibility, SaveUserMenuVisibility
+      bootstrap.go          InitializeAdminUser
     validator/
       tasks.go              Input rule checks for UC-03
       resources.go          Input rule checks for UC-04
@@ -80,6 +85,7 @@ p2/
       carryover.go          Input rule checks for UC-06
       users.go              Input rule checks for UC-08 to UC-10
       roles.go              Input rule checks for UC-11, UC-12
+      menu_visibility.go    Input rule checks for UC-16
     presenter/
       response.go           Builds command response payload.
   domain/
@@ -104,6 +110,8 @@ p2/
         users.sql.go        Query set for users.
         roles.sql.go        Query set for project roles.
         locale.sql.go       Query set for locale config.
+        menu_visibility.sql.go Query set for user menu visibility.
+        bootstrap.sql.go    Query set for initial admin bootstrap.
     repository/
       projects_repo.go      Implementation of projects repository interface.
       tasks_repo.go         Implementation of tasks repository interface.
@@ -113,6 +121,8 @@ p2/
       users_repo.go         Implementation of users repository interface.
       roles_repo.go         Implementation of roles repository interface.
       locale_repo.go        Implementation of locale repository interface.
+      menu_visibility_repo.go Implementation of menu visibility repository interface.
+      bootstrap_repo.go     Implementation of startup bootstrap repository interface.
   shared/
     apperror/
       code.go               Domain error code constants.
@@ -225,6 +235,14 @@ Rules:
 | ProjectID | string | project_id | No | Foreign key to projects |
 | UserID | string | user_id | No | Reference to users.user_id |
 | Role | string | role | No | Allowed values: "administrator", "assignee" |
+
+### 3.9 UserMenuVisibility
+
+| Field | Go Type | JSON Key | Nullable | Description |
+| --- | --- | --- | --- | --- |
+| UserID | string | user_id | No | Reference to users.user_id |
+| MenuKey | string | menu_key | No | Menu identifier key |
+| IsEnabled | bool | is_enabled | No | true if menu button is enabled for the user |
 
 ## 4. ZMQ Message Struct Definitions
 
@@ -505,13 +523,57 @@ Response `data` field:
 | locale | string | Resolved default locale |
 | source | string | `matched`, `fallback` |
 
+### 5.17 API-17 GET /api/top/menu
+
+Request: No body.
+
+Request header:
+
+| Header | Required | Description |
+| --- | --- | --- |
+| X-User-Id | Yes | Signed-in user identifier |
+
+Response `data` field:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| user_id | string | Signed-in user identifier |
+| menu_buttons | array | Enabled menu list for the signed-in user |
+| menu_buttons[].menu_key | string | `project_select`, `sprint_workspace`, `resource_settings`, `calendar_settings`, `user_management` |
+| menu_buttons[].label | string | UI display label |
+
+### 5.18 API-18 GET /api/users/{user_id}/menu-visibility
+
+Request: No body.
+
+Response `data` field:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| user_id | string | Target user identifier |
+| menu_visibility | array | User menu visibility settings |
+| menu_visibility[].menu_key | string | `project_select`, `sprint_workspace`, `resource_settings`, `calendar_settings`, `user_management` |
+| menu_visibility[].is_enabled | boolean | true if enabled |
+
+### 5.19 API-19 PUT /api/users/{user_id}/menu-visibility
+
+Request body fields:
+
+| Field | Type | Constraint | Description |
+| --- | --- | --- | --- |
+| menu_visibility | array | Required | Full menu visibility setting list to replace existing set |
+| menu_visibility[].menu_key | string | Must be in allowed key set | Menu identifier key |
+| menu_visibility[].is_enabled | boolean | Required | Enable flag for the menu key |
+
+Response `data` field: same structure as request body plus `user_id`.
+
 ## 6. Database Schema
 
 ### 6.1 Storage Topology
 
 | File | Scope | Tables |
 | --- | --- | --- |
-| `system.sqlite` | System-level; one file per deployment | `users`, `projects` |
+| `system.sqlite` | System-level; one file per deployment | `users`, `projects`, `user_credentials`, `user_menu_visibility` |
 | `project_{id}.sqlite` | Project-level; one file per project | `sprints`, `tasks`, `resources`, `working_day_calendar`, `task_resource_allocations`, `project_roles` |
 
 - P2 opens `system.sqlite` at startup. P2 holds a single long-lived connection.
@@ -529,6 +591,22 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at TEXT NOT NULL
 );
 ```
+
+### 6.2.1 Table: user_credentials (system.sqlite)
+
+```sql
+CREATE TABLE IF NOT EXISTS user_credentials (
+  user_id       TEXT NOT NULL PRIMARY KEY,
+  password_hash TEXT NOT NULL,
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL
+);
+```
+
+Column notes:
+
+- `password_hash` stores one-way hashed password bytes encoded as text.
+- Initial admin bootstrap computes hash from initial password input value `admin`.
 
 ### 6.3 Table: projects (system.sqlite)
 
@@ -631,6 +709,22 @@ Column notes:
 
 - `role`: Stored values: "administrator", "assignee".
 - `user_id` is not enforced by SQLite FK across database files. P2 validates existence in `system.sqlite` before insert.
+
+### 6.10 Table: user_menu_visibility (system.sqlite)
+
+```sql
+CREATE TABLE IF NOT EXISTS user_menu_visibility (
+  user_id    TEXT NOT NULL,
+  menu_key   TEXT NOT NULL,
+  is_enabled INTEGER NOT NULL,
+  PRIMARY KEY (user_id, menu_key)
+);
+```
+
+Column notes:
+
+- `menu_key`: Stored values: `project_select`, `sprint_workspace`, `resource_settings`, `calendar_settings`, `user_management`.
+- `is_enabled`: 1 for enabled, 0 for disabled.
 
 ## 7. P1 Handler Processing Design
 
@@ -745,6 +839,25 @@ P1 executes these steps before API-specific logic for every handler:
 1. Read optional `Accept-Language` from request header.
 2. Build `ZMQRequest`: `command = "resolve_default_locale"`, `query_params = {"accept_language": header_value}`.
 3. Send to P2, return HTTP response.
+
+### 7.18 HandleGetTopMenu (API-17)
+
+1. Read `X-User-Id` from request header. If absent, return `400 INVALID_PATH_PARAM`.
+2. Build `ZMQRequest`: `command = "get_top_menu"`, `query_params = {"user_id": header_value}`.
+3. Send to P2, return HTTP response.
+
+### 7.19 HandleGetUserMenuVisibility (API-18)
+
+1. Extract `user_id` from path.
+2. Build `ZMQRequest`: `command = "get_user_menu_visibility"`, `path_params = {"user_id": user_id}`.
+3. Send to P2, return HTTP response.
+
+### 7.20 HandleSaveUserMenuVisibility (API-19)
+
+1. Extract `user_id` from path.
+2. Parse JSON body. If parsing fails, return `400 INVALID_JSON`.
+3. Build `ZMQRequest`: `command = "save_user_menu_visibility"`, `path_params = {"user_id": user_id}`, serialized payload.
+4. Send to P2, return HTTP response.
 
 ## 8. P2 Use Case Handler Design
 
@@ -1152,6 +1265,131 @@ LIMIT 1;
 
 Note: If `locale_config` is not prepared, P2 skips Q1. P2 directly applies fallback `en`.
 
+### 8.16 UC-14 GetTopMenu
+
+Function: `GetTopMenu(env ZMQRequest) ZMQResponse`
+
+Processing steps:
+
+1. Read `user_id` from `query_params`.
+2. Execute Q1 on `system.sqlite` to verify the user exists. If no row returned, return error `USER_NOT_FOUND`.
+3. Execute Q2 on `system.sqlite` to read user-specific menu visibility rows.
+4. If Q2 returns no row, build default enabled menu list.
+5. If Q2 returns rows, filter only `is_enabled = 1` rows.
+6. Build response menu button list with `{menu_key, label}`.
+7. Return `ZMQResponse` with `status = "ok"`.
+
+**Q1 - Check user existence (system.sqlite):**
+
+```sql
+SELECT user_id FROM users WHERE user_id = ?;
+```
+
+**Q2 - Select user menu visibility (system.sqlite):**
+
+```sql
+SELECT menu_key, is_enabled
+FROM user_menu_visibility
+WHERE user_id = ?
+ORDER BY menu_key ASC;
+```
+
+### 8.17 UC-15 GetUserMenuVisibility
+
+Function: `GetUserMenuVisibility(env ZMQRequest) ZMQResponse`
+
+Processing steps:
+
+1. Extract `user_id` from `path_params`.
+2. Execute Q1 on `system.sqlite`. If no row returned, return error `USER_NOT_FOUND`.
+3. Execute Q2 on `system.sqlite`.
+4. If Q2 returns no row, build default visibility setting list with all allowed keys enabled.
+5. Return `ZMQResponse` with `status = "ok"`.
+
+**Q1 - Check user existence (system.sqlite):**
+
+```sql
+SELECT user_id FROM users WHERE user_id = ?;
+```
+
+**Q2 - Select menu visibility rows (system.sqlite):**
+
+```sql
+SELECT menu_key, is_enabled
+FROM user_menu_visibility
+WHERE user_id = ?
+ORDER BY menu_key ASC;
+```
+
+### 8.18 UC-16 SaveUserMenuVisibility
+
+Function: `SaveUserMenuVisibility(env ZMQRequest) ZMQResponse`
+
+Processing steps:
+
+1. Extract `user_id` from `path_params`. Decode payload into menu visibility list.
+2. Execute Q1 on `system.sqlite`. If no row returned, return error `USER_NOT_FOUND`.
+3. Validate: if any `menu_key` is not in allowed set, return error `INVALID_MENU_KEY`.
+4. Validate: if any `menu_key` appears more than once in the list, return error `DUPLICATE_MENU_KEY`.
+5. Begin transaction on `system.sqlite`. Execute Q2.
+6. For each item, execute Q3.
+7. Commit transaction.
+8. Return `ZMQResponse` with `status = "ok"`. Return saved visibility list as `data`.
+
+**Q1 - Check user existence (system.sqlite):**
+
+```sql
+SELECT user_id FROM users WHERE user_id = ?;
+```
+
+**Q2 - Delete current menu visibility rows (system.sqlite):**
+
+```sql
+DELETE FROM user_menu_visibility WHERE user_id = ?;
+```
+
+**Q3 - Insert menu visibility row (system.sqlite):**
+
+```sql
+INSERT INTO user_menu_visibility (user_id, menu_key, is_enabled)
+VALUES (?, ?, ?);
+```
+
+### 8.19 Startup InitializeAdminUser
+
+Function: `InitializeAdminUser() error`
+
+Processing steps:
+
+1. Execute Q1 on `system.sqlite` to check whether user_id `admin` exists.
+2. If Q1 returns a row, finish with success.
+3. Compute `password_hash` from initial password input value `admin`.
+4. Begin transaction on `system.sqlite`.
+5. Execute Q2 to insert `users` row for `admin`.
+6. Execute Q3 to insert `user_credentials` row for `admin`.
+7. Commit transaction.
+8. If any SQL step fails, rollback transaction. Return `INITIAL_USER_BOOTSTRAP_FAILED` mapped error.
+
+**Q1 - Check initial admin existence (system.sqlite):**
+
+```sql
+SELECT user_id FROM users WHERE user_id = 'admin';
+```
+
+**Q2 - Insert initial admin user profile (system.sqlite):**
+
+```sql
+INSERT INTO users (user_id, name, email, created_at, updated_at)
+VALUES ('admin', 'Administrator', 'admin@local', ?, ?);
+```
+
+**Q3 - Insert initial admin credential (system.sqlite):**
+
+```sql
+INSERT INTO user_credentials (user_id, password_hash, created_at, updated_at)
+VALUES ('admin', ?, ?, ?);
+```
+
 ## 9. Error Code Reference
 
 | Code | Origin | HTTP Status | Trigger Condition |
@@ -1171,6 +1409,9 @@ Note: If `locale_config` is not prepared, P2 skips Q1. P2 directly applies fallb
 | DUPLICATE_CALENDAR_DATE | P2 | 422 | Same date appears more than once in input |
 | DUPLICATE_USER_ID | P2 | 422 | user_id already exists in users table |
 | INVALID_ROLE | P2 | 422 | role value not in "administrator", "assignee" |
+| INVALID_MENU_KEY | P2 | 422 | menu_key value not in allowed set |
+| DUPLICATE_MENU_KEY | P2 | 422 | Same menu_key appears more than once in input |
+| INITIAL_USER_BOOTSTRAP_FAILED | P2 | 500 | Startup bootstrap for initial admin user fails |
 | PERSISTENCE_ERROR | P2 | 500 | SQLite read operation failure, SQLite write operation failure |
 | UPSTREAM_UNAVAILABLE | P1 | 502 | ZMQ transport failure |
 | UPSTREAM_TIMEOUT | P1 | 504 | ZMQ response not received within 3000 ms |
@@ -1186,7 +1427,8 @@ Note: If `locale_config` is not prepared, P2 skips Q1. P2 directly applies fallb
 | §4.3 IF-DB-01 primary tables | §6 Database Schema |
 | §5.1 P1 validation/response mapping rules | §7 P1 Handler Processing Design |
 | §5.2 P2 dispatch/persistence rules | §8 P2 Use Case Handler Design |
-| §6.1 to 6.13 Use case conditions/behaviors | §8.1 to 8.15 Use case handler processing steps |
+| §5.3 P2 startup initialization process | §8.19 Startup InitializeAdminUser |
+| §6.1 to 6.16 Use case conditions/behaviors | §8.1 to 8.18 Use case handler processing steps |
 | §7 Error model | §9 Error Code Reference |
 | §8 Timeouts/retries | §7.1 Common Steps (transport error, timeout handling) |
 
@@ -1195,3 +1437,9 @@ Note: If `locale_config` is not prepared, P2 skips Q1. P2 directly applies fallb
 | Requirement ID | SRS Section | Requirement Summary | Detailed Design Section | Design Element |
 | --- | --- | --- | --- | --- |
 | SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §2.3 MVC Responsibility Mapping, §8 P2 Use Case Handler Design, §7.1 Common Steps | MVC role boundaries, P2 use case orchestration, P1 response construction boundary |
+| SRS-UI-10 | §4.2 Common UI Requirements | Provide a top page as a major screen | §5.17 API-17, §7.18, §8.16 | Top menu endpoint, top menu handler, top menu use case |
+| SRS-UI-11 | §4.2 Common UI Requirements | Display top-page menu entries as buttons | §5.17 API-17, §8.16 | Response payload `menu_buttons[{menu_key,label}]` |
+| SRS-UI-12 | §4.2 Common UI Requirements | Support menu visibility settings per user | §5.18 API-18, §5.19 API-19, §7.19, §7.20, §8.17, §8.18, §6.10 | User menu visibility read/write endpoints, handlers, use cases, table |
+| SRS-UI-13 | §4.2 Common UI Requirements | Display only enabled menu buttons for the signed-in user | §8.16 UC-14 | Filter rule `is_enabled = 1` for signed-in user |
+| SRS-SC-02 | §4.3.2 Top Page Screen | Display menu area plus menu visibility settings area | §5.17 to §5.19, §8.16 to §8.18 | Top menu retrieval plus per-user menu visibility retrieval/update |
+| SRS-UM-00 | §5.0 Initial User Requirements | Prepare initial user `admin` with initial password `admin` | §6.2.1, §8.19 | Startup bootstrap inserts `admin` user plus credential hash from initial password value |

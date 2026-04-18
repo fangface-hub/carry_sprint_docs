@@ -105,6 +105,10 @@ This diagram shows the screen structure of the browser client.
 
 - Implement the UI structure defined in this specification.
 - Implement the UI elements defined in this specification.
+- Provide a top page as a major screen.
+- Display top-page menu entries as buttons.
+- Support menu visibility settings per user.
+- Display only enabled menu buttons for the signed-in user.
 - Ensure major screens render correctly on desktop widths.
 - Ensure major screens render correctly on mobile widths.
 - Display the following values with consistent visual rules:
@@ -140,7 +144,20 @@ This diagram shows the external appearance of the project selection screen.
 !include ../ui/screen_project_select.puml
 ```
 
-#### 4.3.2 Sprint Workspace Screen
+#### 4.3.2 Top Page Screen
+
+This diagram shows the external appearance of the top page screen.
+
+| Element | Description |
+| --- | --- |
+| Menu area | Area for menu buttons |
+| Menu visibility settings | Area for user-specific menu ON/OFF settings |
+
+```plantuml
+!include ../ui/screen_top_page.puml
+```
+
+#### 4.3.3 Sprint Workspace Screen
 
 This diagram shows the external appearance of the sprint workspace screen.
 
@@ -154,7 +171,7 @@ This diagram shows the external appearance of the sprint workspace screen.
 !include ../ui/screen_sprint_workspace.puml
 ```
 
-#### 4.3.3 Resource Settings Screen
+#### 4.3.4 Resource Settings Screen
 
 This diagram shows the external appearance of the resource settings screen.
 
@@ -167,7 +184,7 @@ This diagram shows the external appearance of the resource settings screen.
 !include ../ui/screen_resource_settings.puml
 ```
 
-#### 4.3.4 Working-Day Calendar Screen
+#### 4.3.5 Working-Day Calendar Screen
 
 This diagram shows the external appearance of the working-day calendar screen.
 
@@ -180,7 +197,7 @@ This diagram shows the external appearance of the working-day calendar screen.
 !include ../ui/screen_calendar_settings.puml
 ```
 
-#### 4.3.5 Carry-Over Review Dialog
+#### 4.3.6 Carry-Over Review Dialog
 
 This diagram shows the external appearance of the carry-over review dialog.
 
@@ -193,7 +210,7 @@ This diagram shows the external appearance of the carry-over review dialog.
 !include ../ui/screen_carryover_dialog.puml
 ```
 
-#### 4.3.6 User Management Screen
+#### 4.3.7 User Management Screen
 
 This diagram shows the external appearance of the user management screen.
 
@@ -208,6 +225,11 @@ This diagram shows the external appearance of the user management screen.
 ```
 
 ## 5. User Management Requirements
+
+### 5.0 Initial User Requirements
+
+- Prepare an initial user with the user ID `admin`.
+- Set the initial password of the user ID `admin` to `admin`.
 
 ### 5.1 User Operation Requirements
 

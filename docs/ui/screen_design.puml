@@ -8,6 +8,7 @@ skinparam defaultTextAlignment center
 actor "User" as user
 
 rectangle "Browser UI" {
+  rectangle "Top Page" as screen_top
   rectangle "Project Select Screen" as screen_projects
   rectangle "Sprint Workspace Screen" as screen_workspace
   rectangle "Task Candidate Panel\n(Budget In / Budget Out)" as panel_task
@@ -17,8 +18,12 @@ rectangle "Browser UI" {
   rectangle "Carry-Over Review Dialog" as dialog_carry
 }
 
-user --> screen_projects : Select project
-screen_projects --> screen_workspace : Open sprint workspace
+user --> screen_top : Open application
+screen_top --> screen_projects : Open project select
+screen_top --> screen_workspace : Open sprint workspace
+screen_top --> screen_resource : Open resource settings
+screen_top --> screen_calendar : Open calendar settings
+screen_projects --> screen_workspace : Open selected project
 
 screen_workspace --> panel_task : Show candidate tasks
 screen_workspace --> panel_editor : Edit impact / estimate
@@ -30,6 +35,11 @@ screen_workspace --> screen_calendar : Open calendar settings
 screen_resource --> screen_workspace : Save and return
 screen_calendar --> screen_workspace : Save and return
 dialog_carry --> screen_workspace : Confirm and apply
+
+note right of screen_top
+  Display menu as buttons.
+  Control menu visibility per user.
+end note
 
 note right of panel_task
   No progress monitoring UI.

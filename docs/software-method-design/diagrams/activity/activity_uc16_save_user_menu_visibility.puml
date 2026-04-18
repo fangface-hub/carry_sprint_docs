@@ -1,0 +1,50 @@
+@startuml CarrySprintActivityUC16
+
+title Activity UC-16 Save User Menu Visibility
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+start
+
+:Receive HTTP PUT /api/users/{user_id}/menu-visibility;
+if (JSON payload valid?) then (yes)
+else (no)
+  :Return 400 INVALID_JSON;
+  stop
+endif
+
+:Send save_user_menu_visibility command to P2;
+if (P2 transport error?) then (yes)
+  :Return 502 UPSTREAM_UNAVAILABLE;
+  stop
+else (no)
+endif
+
+:P2 checks target user;
+if (User exists?) then (yes)
+else (no)
+  :Return 404 USER_NOT_FOUND;
+  stop
+endif
+
+if (All menu keys allowed?) then (yes)
+else (no)
+  :Return 422 INVALID_MENU_KEY;
+  stop
+endif
+
+if (Any duplicated menu key?) then (yes)
+  :Return 422 DUPLICATE_MENU_KEY;
+  stop
+else (no)
+endif
+
+:P2 begins SQL transaction;
+:Delete current user menu_visibility rows;
+:Insert new menu_visibility rows;
+:Commit transaction;
+:Return 200 response;
+stop
+
+@enduml

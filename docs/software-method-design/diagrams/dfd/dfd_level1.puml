@@ -9,17 +9,20 @@ actor "User" as user
 rectangle "Web Browser" as browser
 rectangle "P1 Web Gateway Process" as p1
 rectangle "P2 Application Process" as p2
-database "Project SQLite\nproject_<id>.sqlite" as db
+database "System SQLite\nsystem.sqlite" as db_system
+database "Project SQLite\nproject_<id>.sqlite" as db_project
 
-user --> browser : Select project\nEdit task\nApply carry-over
+user --> browser : Open top page\nSelect project\nEdit task\nApply carry-over\nSet menu visibility
 browser --> p1 : HTTP JSON request
 p1 --> p2 : ZeroMQ JSON command
-p2 --> db : SQL read/write
+p2 --> db_system : SQL read/write
+p2 --> db_project : SQL read/write
 
-db --> p2 : rowset/result
+db_system --> p2 : rowset/result
+db_project --> p2 : rowset/result
 p2 --> p1 : ZeroMQ JSON response
 p1 --> browser : HTTP JSON response
-browser --> user : budget-in/budget-out\nresource/calendar\nerror message
+browser --> user : top-page menu buttons\nbudget-in/budget-out\nresource/calendar\nerror message
 
 note right of p1
   P1 validates route and payload.
@@ -29,6 +32,15 @@ end note
 note right of p2
   P2 executes domain logic.
   P2 controls transaction boundary.
+end note
+
+note bottom of db_system
+  users, user_menu_visibility,
+  startup admin bootstrap data.
+end note
+
+note bottom of db_project
+  sprint and planning data.
 end note
 
 @enduml

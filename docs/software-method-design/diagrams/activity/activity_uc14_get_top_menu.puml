@@ -1,0 +1,43 @@
+@startuml CarrySprintActivityUC14
+
+title Activity UC-14 Get Top Menu
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+start
+
+:Receive HTTP GET /api/top/menu;
+if (X-User-Id header exists?) then (yes)
+  :Build ZeroMQ command\nget_top_menu;
+else (no)
+  :Return 400 INVALID_PATH_PARAM;
+  stop
+endif
+
+:Send command to P2;
+if (P2 transport error?) then (yes)
+  :Return 502 UPSTREAM_UNAVAILABLE;
+  stop
+else (no)
+endif
+
+:P2 checks user existence;
+if (User exists?) then (yes)
+else (no)
+  :Return 404 USER_NOT_FOUND;
+  stop
+endif
+
+:P2 loads user_menu_visibility;
+if (Visibility rows found?) then (yes)
+  :Filter is_enabled = 1;
+else (no)
+  :Build default enabled menu list;
+endif
+
+:Build menu_buttons payload;
+:Return 200 response;
+stop
+
+@enduml

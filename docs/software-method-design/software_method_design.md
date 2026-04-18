@@ -18,13 +18,16 @@ Target runtime structure:
 
 Target functional scope:
 
+- Top page retrieval
 - Project selection
 - Sprint workspace retrieval
 - Task update
 - Resource settings retrieval/update
 - Working-day calendar retrieval/update
 - Carry-over review apply
+- User menu visibility retrieval/update
 - User registration/modification/deletion
+- Initial admin user bootstrap
 - Project role assignment
 - Default locale resolution by client language/region
 
@@ -116,6 +119,9 @@ Endpoint contracts:
 | API-14 | GET | /api/projects/{project_id}/roles | none | project role list |
 | API-15 | PUT | /api/projects/{project_id}/roles | role assignment list | saved role assignment list |
 | API-16 | GET | /api/locales/default | none | resolved default locale |
+| API-17 | GET | /api/top/menu | none | enabled menu button list for signed-in user |
+| API-18 | GET | /api/users/{user_id}/menu-visibility | none | user menu visibility settings |
+| API-19 | PUT | /api/users/{user_id}/menu-visibility | menu visibility setting list | saved user menu visibility settings |
 
 ### 4.2 Interface IF-ZMQ-01 (P1 -> P2)
 
@@ -171,6 +177,9 @@ Command mapping:
 | `get_project_roles` | API-14 |
 | `save_project_roles` | API-15 |
 | `resolve_default_locale` | API-16 |
+| `get_top_menu` | API-17 |
+| `get_user_menu_visibility` | API-18 |
+| `save_user_menu_visibility` | API-19 |
 
 ### 4.3 Interface IF-DB-01 (P2 -> SQLite)
 
@@ -189,6 +198,7 @@ Primary tables:
 - `task_resource_allocations`
 - `users`
 - `project_roles`
+- `user_menu_visibility`
 
 ## 5. Process Input/Output
 
@@ -243,6 +253,23 @@ P2 persistence rules:
 - Condition: write command starts. Behavior: open transaction.
 - Condition: all SQL statements finish successfully. Behavior: commit transaction.
 - Condition: any SQL statement fails. Behavior: rollback transaction, return `PERSISTENCE_ERROR`.
+
+### 5.3 P2 Startup Initialization Process
+
+Inputs:
+
+- Application start event
+
+Outputs:
+
+- SQL read query for bootstrap check
+- SQL write transaction for bootstrap insert
+
+Startup initialization rules:
+
+- Condition: user row with user_id `admin` does not exist. Behavior: insert user row with user_id `admin`, initial password value `admin`, set created_at.
+- Condition: user row with user_id `admin` exists. Behavior: skip bootstrap insert.
+- Condition: bootstrap SQL operation fails. Behavior: stop P2 startup, return `INITIAL_USER_BOOTSTRAP_FAILED`.
 
 ## 6. Use Case Conditions/Behaviors
 
@@ -329,7 +356,39 @@ Classification behavior:
 - Condition: locale configuration has no entry matching client language/region. Behavior: return fallback locale `en`.
 - Condition: client language/region cannot be parsed from request context. Behavior: return fallback locale `en`.
 
-### 6.14 Activity Diagrams
+### 6.14 UC-14 Get Top Menu
+
+- Condition: signed-in user is resolved from request context. Behavior: return enabled menu button list from user menu visibility setting.
+- Condition: user menu visibility setting row does not exist. Behavior: return default enabled menu list.
+
+Default enabled menu list:
+
+- Project Select
+- Sprint Workspace
+- Resource Settings
+- Working-Day Calendar
+
+### 6.15 UC-15 Get User Menu Visibility
+
+- Condition: target user exists. Behavior: return target user menu visibility settings.
+- Condition: target user does not exist. Behavior: return `USER_NOT_FOUND`.
+
+### 6.16 UC-16 Save User Menu Visibility
+
+- Condition: target user exists, payload menu keys are valid. Behavior: replace target user menu visibility settings in one transaction.
+- Condition: menu key is not in allowed set. Behavior: return `INVALID_MENU_KEY`.
+- Condition: duplicated menu key appears in payload. Behavior: return `DUPLICATE_MENU_KEY`.
+- Condition: target user does not exist. Behavior: return `USER_NOT_FOUND`.
+
+Allowed menu key set:
+
+- project_select
+- sprint_workspace
+- resource_settings
+- calendar_settings
+- user_management
+
+### 6.17 Activity Diagrams
 
 The following activity diagram defines UC-02 control flow with condition branches.
 
@@ -341,6 +400,24 @@ The following activity diagram defines UC-06 control flow with transaction/rollb
 
 ```plantuml
 !include ./diagrams/activity/activity_uc06_apply_carryover.puml
+```
+
+The following activity diagram defines UC-14 control flow for signed-in user top menu resolution.
+
+```plantuml
+!include ./diagrams/activity/activity_uc14_get_top_menu.puml
+```
+
+The following activity diagram defines UC-16 control flow for user menu visibility update.
+
+```plantuml
+!include ./diagrams/activity/activity_uc16_save_user_menu_visibility.puml
+```
+
+The following activity diagram defines P2 startup initialization flow for initial admin user bootstrap.
+
+```plantuml
+!include ./diagrams/activity/activity_startup_initialize_admin_user.puml
 ```
 
 ## 7. Error Model
@@ -370,7 +447,10 @@ Error code table:
 | USER_NOT_FOUND | User row not found | 404 |
 | DUPLICATE_USER_ID | User identifier duplicated | 422 |
 | INVALID_ROLE | Role value not in allowed set | 422 |
+| INVALID_MENU_KEY | Menu key value not in allowed set | 422 |
+| DUPLICATE_MENU_KEY | Menu key duplicated in input | 422 |
 | PERSISTENCE_ERROR | SQLite read failure, SQLite write failure | 500 |
+| INITIAL_USER_BOOTSTRAP_FAILED | Initial admin user bootstrap failed at startup | 500 |
 | UPSTREAM_UNAVAILABLE | ZeroMQ transport failure | 502 |
 | UPSTREAM_TIMEOUT | ZeroMQ timeout | 504 |
 
@@ -392,7 +472,7 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | SRS-SYS-01 | §1 System Architecture | ZeroMQ-based inter-process communication between client and server | §4.2 IF-ZMQ-01 | ZeroMQ REQ/REP protocol, JSON request/response schema, command mapping |
 | SRS-SYS-02 | §1 System Architecture | SQLite-based per-project storage | §3.2 Data Store Access Rule, §4.3 IF-DB-01 | P2-only SQLite access rule, SQL read/write access mode |
 | SRS-SYS-03 | §2 Software Architecture | API gateway as HTTP entry point with request routing boundary | §4.1 IF-HTTP-01, §5.1 P1 | HTTPS endpoint contracts, P1 input validation rules, P1 response mapping rules |
-| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §3.4 MVC Responsibility Mapping, §5.2 P2, §6.1 to 6.13 | MVC role boundaries, P2 command dispatch rules, use case handlers UC-01 through UC-13 |
+| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §3.4 MVC Responsibility Mapping, §5.2 P2, §6.1 to 6.16 | MVC role boundaries, P2 command dispatch rules, use case handlers UC-01 through UC-16 |
 
 ### 9.2 Database
 
@@ -417,22 +497,28 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | SRS-UI-07 | §4.2 Common UI Requirements | Do not display monitoring metrics | §4.1 IF-HTTP-01 | No monitoring data field included in any response payload |
 | SRS-UI-08 | §4.2 Common UI Requirements | Make primary operations executable within three clicks | §4.1 API-01, API-02, API-03 | Project list, project summary, sprint workspace accessible via single API call each |
 | SRS-UI-09 | §4.2 Common UI Requirements | Represent states with labels, icons, not color alone | - | Client-side rendering concern; no server-side method design element |
+| SRS-UI-10 | §4.2 Common UI Requirements | Provide a top page as a major screen | §4.1 API-17, §6.14 UC-14 | `get_top_menu` command provides top page menu model |
+| SRS-UI-11 | §4.2 Common UI Requirements | Display top-page menu entries as buttons | §4.1 API-17, §6.14 UC-14 | Enabled menu item list for button rendering |
+| SRS-UI-12 | §4.2 Common UI Requirements | Support menu visibility settings per user | §4.1 API-18, API-19, §6.15, §6.16 | User menu visibility retrieval and update commands |
+| SRS-UI-13 | §4.2 Common UI Requirements | Display only enabled menu buttons for the signed-in user | §4.1 API-17, §6.14 UC-14 | Signed-in user scoped menu filtering behavior |
 
 ### 9.4 Screen-specific Requirements
 
 | Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
 | --- | --- | --- | --- | --- |
 | SRS-SC-01 | §4.3.1 Project Select Screen | Display project search plus project list plus project summary | §6.1 UC-01, §4.1 API-01, API-02 | `list_projects` command, `get_project_summary` command |
-| SRS-SC-02 | §4.3.2 Sprint Workspace Screen | Display budget-in tasks plus budget-out tasks plus task editing area | §6.2 UC-02, §6.3 UC-03, §4.1 API-03, API-04 | `get_sprint_workspace` command with classification behavior, `update_task` command |
-| SRS-SC-03 | §4.3.3 Resource Settings Screen | Display resource table plus resource edit form | §6.4 UC-04, §4.1 API-05, API-06 | `list_resources` command, `save_resources` command |
-| SRS-SC-04 | §4.3.4 Working-Day Calendar Screen | Display calendar grid plus calendar control area | §6.5 UC-05, §4.1 API-07, API-08 | `get_calendar` command, `save_calendar` command |
-| SRS-SC-05 | §4.3.5 Carry-Over Review Dialog | Display deferred task review plus carry-over decision input | §6.6 UC-06, §4.1 API-09 | `apply_carryover` command with keep/move decision handling |
-| SRS-SC-06 | §4.3.6 User Management Screen | Display user list plus user edit form plus project role assignment area | §6.7 to 6.12, §4.1 API-10 to API-15 | User CRUD commands, `get_project_roles` command, `save_project_roles` command |
+| SRS-SC-02 | §4.3.2 Top Page Screen | Display menu area plus menu visibility settings area | §6.14, §6.15, §6.16, §4.1 API-17 to API-19 | `get_top_menu`, `get_user_menu_visibility`, `save_user_menu_visibility` commands |
+| SRS-SC-03 | §4.3.3 Sprint Workspace Screen | Display budget-in tasks plus budget-out tasks plus task editing area | §6.2 UC-02, §6.3 UC-03, §4.1 API-03, API-04 | `get_sprint_workspace` command with classification behavior, `update_task` command |
+| SRS-SC-04 | §4.3.4 Resource Settings Screen | Display resource table plus resource edit form | §6.4 UC-04, §4.1 API-05, API-06 | `list_resources` command, `save_resources` command |
+| SRS-SC-05 | §4.3.5 Working-Day Calendar Screen | Display calendar grid plus calendar control area | §6.5 UC-05, §4.1 API-07, API-08 | `get_calendar` command, `save_calendar` command |
+| SRS-SC-06 | §4.3.6 Carry-Over Review Dialog | Display deferred task review plus carry-over decision input | §6.6 UC-06, §4.1 API-09 | `apply_carryover` command with keep/move decision handling |
+| SRS-SC-07 | §4.3.7 User Management Screen | Display user list plus user edit form plus project role assignment area | §6.7 to 6.12, §4.1 API-10 to API-15 | User CRUD commands, `get_project_roles` command, `save_project_roles` command |
 
 ### 9.5 User Management Requirements
 
 | Requirement ID | SRS Section | Requirement Summary | Method Design Section | Design Element |
 | --- | --- | --- | --- | --- |
+| SRS-UM-00 | §5.0 Initial User Requirements | Prepare initial user `admin` with initial password `admin` | §5.3 P2 Startup Initialization Process | Startup bootstrap rule inserts initial user when missing |
 | SRS-UM-01 | §5.1 User Operation Requirements | Register a user from the user management screen | §6.8 UC-08, §4.1 API-11 | `register_user` command with duplicate check |
 | SRS-UM-02 | §5.1 User Operation Requirements | Modify registered user information from the user management screen | §6.9 UC-09, §4.1 API-12 | `update_user` command with existence check |
 | SRS-UM-03 | §5.1 User Operation Requirements | Delete a registered user from the user management screen | §6.10 UC-10, §4.1 API-13 | `delete_user` command with cascade role deletion in one transaction |
@@ -458,7 +544,10 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | Working-day calendar handling | API-07, API-08, UC-05 |
 | Budget-in/budget-out UI support | API-03, UC-02, Section 6.13 |
 | Carry-over decision support | API-09, UC-06, Section 6.13 |
+| Top page menu button support | API-17, UC-14 |
+| User-specific menu visibility control | API-18, API-19, UC-15, UC-16 |
 | User registration/modification/deletion | API-10, API-11, API-12, API-13, UC-07 through UC-10 |
+| Initial admin user bootstrap | Section 5.3 |
 | Project role assignment | API-14, API-15, UC-11, UC-12 |
 | Default locale resolution | API-16, UC-13 |
 
