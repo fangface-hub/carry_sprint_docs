@@ -103,6 +103,26 @@ This diagram shows the screen structure of the browser client.
 
 ### 4.2 Common User Interface Requirements
 
+#### 4.2.1 UI Placement URL
+
+The browser client shall place each major UI at the following URL.
+
+| UI | URL | Purpose |
+| --- | --- | --- |
+| Top Page | `/` | Entry point of the browser client |
+| Project Select Screen | `/projects` | Project selection UI |
+| Sprint Workspace Screen | `/projects/{project_id}/sprints/{sprint_id}/workspace` | Sprint work review UI for one project, one sprint |
+| Resource Settings Screen | `/projects/{project_id}/resources` | Resource settings UI for one project |
+| Working-Day Calendar Screen | `/projects/{project_id}/calendar` | Working-day calendar UI for one project |
+| User Management Screen | `/users` | User registration, user update, user deletion, project role assignment UI |
+| Carry-Over Review Dialog | `/projects/{project_id}/sprints/{sprint_id}/workspace?dialog=carryover` | Carry-over review UI on sprint workspace |
+
+- Use stable URLs for direct browser access.
+- Use path parameters for project context.
+- Use path parameters for sprint context.
+- Open the carry-over review dialog on the sprint workspace URL.
+- Use the `dialog=carryover` query parameter for the carry-over review dialog state.
+
 - Implement the UI structure defined in this specification.
 - Implement the UI elements defined in this specification.
 - Provide a top page as a major screen.

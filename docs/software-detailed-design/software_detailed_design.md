@@ -19,7 +19,7 @@ p1/
   main.go                   Entry point. Wires HTTP transport and ZMQ gateway.
   transport/
     http/
-      router.go             Registers API routes.
+      router.go             Registers browser UI routes. Registers API routes.
       middleware/
         request_id.go       Validates X-Request-Id.
       handler/
@@ -274,6 +274,28 @@ Rules:
 | Message | string | message | Deterministic human-readable message |
 
 ## 5. API Request/Response Payload Schemas
+
+### 5.0 Browser UI Routes
+
+P1 browser UI route registration schema:
+
+| UI | Browser Route | Required Route State | P1 Route Action | Upstream API Dependency |
+| --- | --- | --- | --- | --- |
+| Top Page | / | none | Serve top page shell | API-17, API-18, API-19 |
+| Project Select Screen | /projects | none | Serve project select shell | API-01, API-02 |
+| Sprint Workspace Screen | /projects/{project_id}/sprints/{sprint_id}/workspace | path params: `project_id`, `sprint_id` | Serve sprint workspace shell | API-03, API-04 |
+| Resource Settings Screen | /projects/{project_id}/resources | path param: `project_id` | Serve resource settings shell | API-05, API-06 |
+| Working-Day Calendar Screen | /projects/{project_id}/calendar | path param: `project_id` | Serve calendar settings shell | API-07, API-08 |
+| User Management Screen | /users | none | Serve user management shell | API-10, API-11, API-12, API-13, API-14, API-15 |
+| Carry-Over Review Dialog | /projects/{project_id}/sprints/{sprint_id}/workspace?dialog=carryover | path params: `project_id`, `sprint_id`; query param: `dialog=carryover` | Serve sprint workspace shell. Open carry-over dialog state. | API-03, API-09 |
+
+P1 browser UI route rules:
+
+- `router.go` shall register stable browser UI routes.
+- `router.go` shall register API routes under `/api`.
+- `router.go` shall resolve `project_id` from browser route path parameters.
+- `router.go` shall resolve `sprint_id` from browser route path parameters.
+- `router.go` shall detect carry-over dialog state from query parameter `dialog=carryover`.
 
 ### 5.1 API-01 GET /api/projects
 
@@ -727,6 +749,14 @@ Column notes:
 - `is_enabled`: 1 for enabled, 0 for disabled.
 
 ## 7. P1 Handler Processing Design
+
+P1 router registration rules:
+
+- `router.go` shall match browser UI routes before fallback 404 handling.
+- `router.go` shall dispatch `/api/...` requests to API handlers.
+- `router.go` shall dispatch non-API browser UI routes to browser UI shell rendering.
+- `router.go` shall return `404 ROUTE_NOT_FOUND` for undefined browser UI routes.
+- `router.go` shall return `404 ROUTE_NOT_FOUND` for undefined API routes.
 
 ### 7.1 Common Steps for All Handlers
 
@@ -1441,5 +1471,6 @@ VALUES ('admin', ?, ?, ?);
 | SRS-UI-11 | §4.2 Common UI Requirements | Display top-page menu entries as buttons | §5.17 API-17, §8.16 | Response payload `menu_buttons[{menu_key,label}]` |
 | SRS-UI-12 | §4.2 Common UI Requirements | Support menu visibility settings per user | §5.18 API-18, §5.19 API-19, §7.19, §7.20, §8.17, §8.18, §6.10 | User menu visibility read/write endpoints, handlers, use cases, table |
 | SRS-UI-13 | §4.2 Common UI Requirements | Display only enabled menu buttons for the signed-in user | §8.16 UC-14 | Filter rule `is_enabled = 1` for signed-in user |
+| SRS-UI-14 | §4.2.1 UI Placement URL | Place each major UI at the defined stable URL | §5.0 Browser UI Routes, §7 P1 Handler Processing Design | Browser UI route registration schema, router registration rules |
 | SRS-SC-02 | §4.3.2 Top Page Screen | Display menu area plus menu visibility settings area | §5.17 to §5.19, §8.16 to §8.18 | Top menu retrieval plus per-user menu visibility retrieval/update |
 | SRS-UM-00 | §5.0 Initial User Requirements | Prepare initial user `admin` with initial password `admin` | §6.2.1, §8.19 | Startup bootstrap inserts `admin` user plus credential hash from initial password value |

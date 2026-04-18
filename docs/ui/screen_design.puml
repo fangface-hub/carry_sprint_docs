@@ -39,11 +39,28 @@ dialog_carry --> screen_workspace : Confirm and apply
 note right of screen_top
   Display menu as buttons.
   Control menu visibility per user.
+  URL: /
+  Project Select URL: /projects
+  User Management URL: /users
 end note
 
 note right of panel_task
   No progress monitoring UI.
   Focus on selection under budget.
+end note
+
+note bottom of screen_workspace
+  URL: /projects/{project_id}/sprints/{sprint_id}/workspace
+  Carry-Over Dialog URL:
+  /projects/{project_id}/sprints/{sprint_id}/workspace?dialog=carryover
+end note
+
+note bottom of screen_resource
+  URL: /projects/{project_id}/resources
+end note
+
+note bottom of screen_calendar
+  URL: /projects/{project_id}/calendar
 end note
 
 @enduml

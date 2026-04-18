@@ -99,6 +99,26 @@ Response body common schema:
 }
 ```
 
+Browser UI route contracts:
+
+| UI | Route | Route State | Browser Behavior |
+| --- | --- | --- | --- |
+| Top Page | / | none | Open top page menu |
+| Project Select Screen | /projects | none | Open project selection screen |
+| Sprint Workspace Screen | /projects/{project_id}/sprints/{sprint_id}/workspace | required path params: `project_id`, `sprint_id` | Open sprint workspace for one project plus one sprint |
+| Resource Settings Screen | /projects/{project_id}/resources | required path param: `project_id` | Open resource settings for one project |
+| Working-Day Calendar Screen | /projects/{project_id}/calendar | required path param: `project_id` | Open working-day calendar for one project |
+| User Management Screen | /users | none | Open user management screen |
+| Carry-Over Review Dialog | /projects/{project_id}/sprints/{sprint_id}/workspace?dialog=carryover | required path params: `project_id`, `sprint_id`; required query param: `dialog=carryover` | Open sprint workspace plus carry-over review dialog |
+
+Browser UI route rules:
+
+- P1 shall accept stable browser UI routes for direct access.
+- P1 shall resolve project context from `project_id` path parameter.
+- P1 shall resolve sprint context from `sprint_id` path parameter.
+- P1 shall open the carry-over review dialog on the sprint workspace route.
+- P1 shall resolve the carry-over review dialog state from query parameter `dialog=carryover`.
+
 Endpoint contracts:
 
 | API ID | Method | Path | Input Body | Output Data |
@@ -361,6 +381,16 @@ Classification behavior:
 - Condition: signed-in user is resolved from request context. Behavior: return enabled menu button list from user menu visibility setting.
 - Condition: user menu visibility setting row does not exist. Behavior: return default enabled menu list.
 
+Menu key to browser UI route mapping:
+
+| Menu Key | Browser UI Route |
+| --- | --- |
+| project_select | /projects |
+| sprint_workspace | /projects/{project_id}/sprints/{sprint_id}/workspace |
+| resource_settings | /projects/{project_id}/resources |
+| calendar_settings | /projects/{project_id}/calendar |
+| user_management | /users |
+
 Default enabled menu list:
 
 - Project Select
@@ -501,6 +531,7 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | SRS-UI-11 | §4.2 Common UI Requirements | Display top-page menu entries as buttons | §4.1 API-17, §6.14 UC-14 | Enabled menu item list for button rendering |
 | SRS-UI-12 | §4.2 Common UI Requirements | Support menu visibility settings per user | §4.1 API-18, API-19, §6.15, §6.16 | User menu visibility retrieval and update commands |
 | SRS-UI-13 | §4.2 Common UI Requirements | Display only enabled menu buttons for the signed-in user | §4.1 API-17, §6.14 UC-14 | Signed-in user scoped menu filtering behavior |
+| SRS-UI-14 | §4.2.1 UI Placement URL | Place each major UI at the defined stable URL | §4.1 IF-HTTP-01, §6.14 UC-14 | Browser UI route contracts, menu key to browser UI route mapping |
 
 ### 9.4 Screen-specific Requirements
 
