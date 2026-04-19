@@ -30,7 +30,9 @@ Target functional scope:
 - User registration/modification/deletion
 - Initial admin user bootstrap
 - Project role assignment
+- Default locale resolution by explicit user setting
 - Default locale resolution by client language/region
+- User locale setting retrieval/update
 
 ## 3. Process Model
 
@@ -128,7 +130,11 @@ Browser UI route rules:
 
 Browser UI API integration acceptance criteria:
 
-- Top Page (`/`) shall call API-10 to resolve selectable users, API-17 to resolve enabled menu buttons, and API-18/API-19 to read/write user menu visibility.
+- Top Page (`/`) shall call API-10 to resolve selectable users.
+- Top Page (`/`) shall call API-16 to resolve effective locale.
+- Top Page (`/`) shall call API-17 to resolve enabled menu buttons.
+- Top Page (`/`) shall call API-18/API-19 to read/write user menu visibility.
+- Top Page (`/`) shall call API-21/API-22 to read/write user locale settings.
 - Project Select Screen (`/projects`) shall call API-01 and may call API-02 for selected project detail.
 - Project Register Screen (`/projects/new`) shall call API-10 for administrator candidate list and shall call API-20 for project registration.
 - Sprint Workspace Screen (`/projects/{project_id}/sprints/{sprint_id}/workspace`) shall call API-03 and may call API-04 for task update actions.
@@ -162,6 +168,8 @@ Endpoint contracts:
 | API-18 | GET | /api/users/{user_id}/menu-visibility | none | user menu visibility settings |
 | API-19 | PUT | /api/users/{user_id}/menu-visibility | menu visibility setting list | saved user menu visibility settings |
 | API-20 | POST | /api/projects | project registration fields | registered project plus initial sprint |
+| API-21 | GET | /api/users/{user_id}/locale | none | user locale setting |
+| API-22 | PUT | /api/users/{user_id}/locale | locale setting | saved user locale setting |
 
 ### 4.2 Interface IF-ZMQ-01 (P1 -> P2)
 
@@ -221,6 +229,8 @@ Command mapping:
 | `get_user_menu_visibility` | API-18 |
 | `save_user_menu_visibility` | API-19 |
 | `create_project` | API-20 |
+| `get_user_locale_setting` | API-21 |
+| `save_user_locale_setting` | API-22 |
 
 ### 4.3 Interface IF-DB-01 (P2 -> SQLite)
 
@@ -240,6 +250,7 @@ Primary tables:
 - `users`
 - `project_roles`
 - `user_menu_visibility`
+- `user_locale_settings`
 
 ## 5. Process Input/Output
 
@@ -393,9 +404,26 @@ Classification behavior:
 
 ### 6.13 UC-13 Resolve Default Locale
 
-- Condition: locale configuration contains an entry matching client language/region. Behavior: return matched locale.
-- Condition: locale configuration has no entry matching client language/region. Behavior: return fallback locale `en`.
-- Condition: client language/region cannot be parsed from request context. Behavior: return fallback locale `en`.
+- Condition: explicit user locale setting exists. Behavior: return explicit locale.
+- Condition: locale configuration contains an entry matching client language plus client region. Behavior: return matched locale.
+- Condition: locale configuration contains no language plus region entry. Behavior: evaluate client region only.
+- Condition: locale configuration contains an entry matching client region. Behavior: return region-matched locale.
+- Condition: locale configuration contains no region entry. Behavior: evaluate client language only.
+- Condition: locale configuration contains an entry matching client language. Behavior: return language-matched locale.
+- Condition: no locale rule matches request context. Behavior: return fallback locale `en`.
+
+### 6.17 UC-17 Get User Locale Setting
+
+- Condition: target user exists. Behavior: return explicit locale setting when it exists.
+- Condition: target user has no explicit locale setting. Behavior: return empty locale value.
+- Condition: target user does not exist. Behavior: return `USER_NOT_FOUND`.
+
+### 6.18 UC-18 Save User Locale Setting
+
+- Condition: locale value is empty string. Behavior: clear explicit locale setting.
+- Condition: locale value is in allowed locale set. Behavior: upsert explicit locale setting.
+- Condition: locale value is not in allowed locale set. Behavior: return `INVALID_LOCALE`.
+- Condition: target user does not exist. Behavior: return `USER_NOT_FOUND`.
 
 ### 6.14 UC-14 Get Top Menu
 

@@ -128,6 +128,8 @@ The browser client shall place each major UI at the following URL.
 - Implement the UI elements defined in this specification.
 - Provide a top page as a major screen.
 - Display top-page menu entries as buttons.
+- Support locale settings per user.
+- Allow the user to specify locale from user settings.
 - Support menu visibility settings per user.
 - Display only enabled menu buttons for the signed-in user.
 - Ensure major screens render correctly on desktop widths.
@@ -146,8 +148,10 @@ The browser client shall place each major UI at the following URL.
   - Labels
   - Icons
   - Not color alone
-- Resolve the default locale from the client language when locale configuration is available.
-- Resolve the default locale from the client region when locale configuration is available.
+- Resolve the default locale from explicit user settings when the user specifies locale.
+- Resolve the default locale from the client language plus client region when locale configuration is available.
+- Resolve the default locale from the client region when no language plus region match exists.
+- Resolve the default locale from the client language when no region-based match exists.
 
 ### 4.3 Screen-specific Visual Design
 
@@ -173,6 +177,7 @@ This diagram shows the external appearance of the top page screen.
 | --- | --- |
 | Menu area | Area for menu buttons |
 | Menu visibility settings | Area for user-specific menu ON/OFF settings |
+| Locale settings | Area for user-specific locale selection |
 
 ```plantuml
 !include ../ui/screen_top_page.puml

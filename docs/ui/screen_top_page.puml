@@ -10,6 +10,9 @@ Signed-in user: [admin v]   [Sign Out]
 {| 
 {+
 User: [admin v]
+[Preferred Locale: Automatic v]
+[Effective Locale: ja]
+[Save Locale Settings]
 [X] Project Select
 [X] Sprint Workspace
 [X] Resource Settings

@@ -31,7 +31,7 @@ p1/
         carryover.go        API-09 handler
         users.go            API-10, API-11, API-12, API-13 handlers
         roles.go            API-14, API-15 handlers
-        locale.go           API-16 handler
+        locale.go           API-16, API-21, API-22 handlers
         top.go              API-17 handler
         menu_visibility.go  API-18, API-19 handlers
       presenter/
@@ -74,7 +74,7 @@ p2/
       carryover.go          ApplyCarryover
       users.go              ListUsers, RegisterUser, UpdateUser, DeleteUser
       roles.go              GetProjectRoles, SaveProjectRoles
-      locale.go             ResolveDefaultLocale
+      locale.go             ResolveDefaultLocale, GetUserLocaleSetting, SaveUserLocaleSetting
       top_menu.go           GetTopMenu
       menu_visibility.go    GetUserMenuVisibility, SaveUserMenuVisibility
       bootstrap.go          InitializeAdminUser
@@ -86,6 +86,7 @@ p2/
       carryover.go          Input rule checks for UC-06
       users.go              Input rule checks for UC-08 to UC-10
       roles.go              Input rule checks for UC-11, UC-12
+      locale.go             Input rule checks for UC-13, UC-18
       menu_visibility.go    Input rule checks for UC-16
     presenter/
       response.go           Builds command response payload.
@@ -245,6 +246,13 @@ Rules:
 | MenuKey | string | menu_key | No | Menu identifier key |
 | IsEnabled | bool | is_enabled | No | true if menu button is enabled for the user |
 
+### 3.10 UserLocaleSetting
+
+| Field | Go Type | JSON Key | Nullable | Description |
+| --- | --- | --- | --- | --- |
+| UserID | string | user_id | No | Reference to users.user_id |
+| Locale | string | locale | No | Explicit locale setting. Empty string means automatic selection. |
+
 ## 4. ZMQ Message Struct Definitions
 
 ### 4.1 ZMQRequest
@@ -282,7 +290,7 @@ P1 browser UI route registration schema:
 
 | UI | Browser Route | Required Route State | P1 Route Action | Upstream API Dependency |
 | --- | --- | --- | --- | --- |
-| Top Page | / | none | Serve top page shell | API-17, API-18, API-19 |
+| Top Page | / | none | Serve top page shell | API-10, API-16, API-17, API-18, API-19, API-21, API-22 |
 | Project Select Screen | /projects | none | Serve project select shell | API-01, API-02 |
 | Project Register Screen | /projects/new | none | Serve project register shell | API-10, API-20 |
 | Sprint Workspace Screen | /projects/{project_id}/sprints/{sprint_id}/workspace | path params: `project_id`, `sprint_id` | Serve sprint workspace shell | API-03, API-04 |
@@ -302,7 +310,11 @@ P1 browser UI route rules:
 
 Browser UI API integration acceptance criteria:
 
-- Top Page (`/`) shall integrate API-10, API-17, API-18, API-19 for menu and visibility operations.
+- Top Page (`/`) shall integrate API-10 for user selection.
+- Top Page (`/`) shall integrate API-16 for effective locale resolution.
+- Top Page (`/`) shall integrate API-17 for menu rendering.
+- Top Page (`/`) shall integrate API-18 and API-19 for menu visibility operations.
+- Top Page (`/`) shall integrate API-21 and API-22 for locale setting operations.
 - Project Select Screen (`/projects`) shall integrate API-01 and API-02.
 - Project Register Screen (`/projects/new`) shall integrate API-10 and API-20.
 - Sprint Workspace Screen (`/projects/{project_id}/sprints/{sprint_id}/workspace`) shall integrate API-03 and API-04.
@@ -558,19 +570,21 @@ Accept-Language parsing rules:
 - The header value is split by `,` into language tags.
 - Each tag is optionally followed by `;q=<value>`. The `q` value is a float in range [0.0, 1.0]. Default `q` is 1.0 when omitted.
 - Tags are sorted in descending order of `q` value before evaluation.
-- Only tags with a language subtag and a region subtag (e.g. `ja-JP`) are eligible for `locale_config` lookup. Tags with only a language subtag (e.g. `ja`) are skipped.
-- P2 attempts each eligible tag in priority order. The first `locale_config` match is returned.
+- P2 shall return explicit user locale when `X-User-Id` resolves to a saved locale setting.
+- P2 shall evaluate language plus region match first.
+- P2 shall evaluate region-only match after language plus region lookup fails.
+- P2 shall evaluate language-only match after region-only lookup fails.
 - If no tag matches any `locale_config` entry, P2 returns `fallback`.
 - If the header is absent or empty, P2 returns `fallback`.
 
-Supported locale values in `locale_config`: `en`, `ja`.
+Supported locale values in `locale_config`: `de`, `fr`, `it`, `ja`, `zh`.
 
 Response `data` field:
 
 | Field | Type | Description |
 | --- | --- | --- |
 | locale | string | Resolved default locale |
-| source | string | `matched`, `fallback` |
+| source | string | `user_setting`, `matched`, `region_matched`, `language_matched`, `fallback` |
 
 ### 5.17 API-17 GET /api/top/menu
 
@@ -644,13 +658,35 @@ Response `data` field:
 | initial_admin_user_id | string | Assigned administrator user identifier |
 | created_at | string | RFC3339 timestamp |
 
+### 5.21 API-21 GET /api/users/{user_id}/locale
+
+Request: No body.
+
+Response `data` field:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| user_id | string | Target user identifier |
+| locale | string | Explicit locale setting. Empty string means automatic selection. |
+| locale_options | array | Allowed locale values for explicit selection |
+
+### 5.22 API-22 PUT /api/users/{user_id}/locale
+
+Request body fields:
+
+| Field | Type | Constraint | Description |
+| --- | --- | --- | --- |
+| locale | string | Empty string or one of `de`, `fr`, `it`, `ja`, `zh` | Explicit locale setting |
+
+Response `data` field: same structure as API-21.
+
 ## 6. Database Schema
 
 ### 6.1 Storage Topology
 
 | File | Scope | Tables |
 | --- | --- | --- |
-| `system.sqlite` | System-level; one file per deployment | `users`, `projects`, `user_credentials`, `user_menu_visibility`, `locale_config` |
+| `system.sqlite` | System-level; one file per deployment | `users`, `projects`, `user_credentials`, `user_menu_visibility`, `user_locale_settings`, `locale_config` |
 | `project_{id}.sqlite` | Project-level; one file per project | `sprints`, `tasks`, `resources`, `working_day_calendar`, `task_resource_allocations`, `project_roles` |
 
 - P2 opens `system.sqlite` at startup. P2 holds a single long-lived connection.
@@ -691,8 +727,26 @@ Seed data inserted at startup:
 | language | region | locale |
 | --- | --- | --- |
 | `ja` | `JP` | `ja` |
+| `de` | `DE` | `de` |
+| `zh` | `CN` | `zh` |
+| `it` | `IT` | `it` |
+| `fr` | `FR` | `fr` |
 
-### 6.2.2 Table: user_credentials (system.sqlite)
+### 6.2.2 Table: user_locale_settings (system.sqlite)
+
+```sql
+CREATE TABLE IF NOT EXISTS user_locale_settings (
+  user_id TEXT NOT NULL PRIMARY KEY,
+  locale  TEXT NOT NULL
+);
+```
+
+Column notes:
+
+- `user_id` references `users.user_id` at the application validation layer.
+- `locale` stores one explicit locale value from `de`, `fr`, `it`, `ja`, `zh`.
+
+### 6.2.3 Table: user_credentials (system.sqlite)
 
 ```sql
 CREATE TABLE IF NOT EXISTS user_credentials (
