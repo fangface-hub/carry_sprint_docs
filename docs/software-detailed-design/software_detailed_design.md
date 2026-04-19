@@ -553,6 +553,18 @@ Request header:
 | --- | --- | --- |
 | Accept-Language | No | Client language/region preference. Example: `ja-JP,ja;q=0.9,en-US;q=0.8,en;q=0.7` |
 
+Accept-Language parsing rules:
+
+- The header value is split by `,` into language tags.
+- Each tag is optionally followed by `;q=<value>`. The `q` value is a float in range [0.0, 1.0]. Default `q` is 1.0 when omitted.
+- Tags are sorted in descending order of `q` value before evaluation.
+- Only tags with a language subtag and a region subtag (e.g. `ja-JP`) are eligible for `locale_config` lookup. Tags with only a language subtag (e.g. `ja`) are skipped.
+- P2 attempts each eligible tag in priority order. The first `locale_config` match is returned.
+- If no tag matches any `locale_config` entry, P2 returns `fallback`.
+- If the header is absent or empty, P2 returns `fallback`.
+
+Supported locale values in `locale_config`: `en`, `ja`.
+
 Response `data` field:
 
 | Field | Type | Description |
@@ -638,7 +650,7 @@ Response `data` field:
 
 | File | Scope | Tables |
 | --- | --- | --- |
-| `system.sqlite` | System-level; one file per deployment | `users`, `projects`, `user_credentials`, `user_menu_visibility` |
+| `system.sqlite` | System-level; one file per deployment | `users`, `projects`, `user_credentials`, `user_menu_visibility`, `locale_config` |
 | `project_{id}.sqlite` | Project-level; one file per project | `sprints`, `tasks`, `resources`, `working_day_calendar`, `task_resource_allocations`, `project_roles` |
 
 - P2 opens `system.sqlite` at startup. P2 holds a single long-lived connection.
@@ -657,7 +669,30 @@ CREATE TABLE IF NOT EXISTS users (
 );
 ```
 
-### 6.2.1 Table: user_credentials (system.sqlite)
+### 6.2.1 Table: locale_config (system.sqlite)
+
+```sql
+CREATE TABLE IF NOT EXISTS locale_config (
+    language TEXT NOT NULL,
+    region   TEXT NOT NULL,
+    locale   TEXT NOT NULL,
+    PRIMARY KEY (language, region)
+);
+```
+
+Column notes:
+
+- `language`: ISO 639-1 lowercase language code (e.g. `ja`, `en`).
+- `region`: ISO 3166-1 alpha-2 uppercase region code (e.g. `JP`, `US`).
+- `locale`: Resolved locale string returned to the client (e.g. `ja`, `en`).
+
+Seed data inserted at startup:
+
+| language | region | locale |
+| --- | --- | --- |
+| `ja` | `JP` | `ja` |
+
+### 6.2.2 Table: user_credentials (system.sqlite)
 
 ```sql
 CREATE TABLE IF NOT EXISTS user_credentials (
@@ -1326,14 +1361,19 @@ Function: `ResolveDefaultLocale(env ZMQRequest) ZMQResponse`
 
 Processing steps:
 
-1. Read `accept_language` from `query_params`.
-2. Parse client language/region from `accept_language` in priority order.
-3. Execute Q1 on configuration store.
-4. If Q1 returns a locale, return `ZMQResponse` with `data = {"locale": matched_locale, "source": "matched"}`.
-5. If Q1 returns no row, return `ZMQResponse` with `data = {"locale": "en", "source": "fallback"}`.
-6. If header parsing fails, return `ZMQResponse` with `data = {"locale": "en", "source": "fallback"}`.
+1. Read `accept_language` from `query_params`. If empty, return `ZMQResponse` with `data = {"locale": "en", "source": "fallback"}`.
+2. Split `accept_language` by `,` into tag entries.
+3. For each tag entry, strip `;q=<value>` suffix. Parse `q` as float64. Default `q = 1.0` when `;q=` is absent.
+4. Sort tag entries by `q` value descending.
+5. For each sorted tag (highest `q` first):
+   a. Normalize: replace `_` with `-`.
+   b. Split by `-`. If fewer than 2 segments, skip (region-less tag).
+   c. Set `language = lowercase(segments[0])`, `region = uppercase(segments[1])`.
+   d. Execute Q1 with `language` and `region`.
+   e. If Q1 returns a row, return `ZMQResponse` with `data = {"locale": matched_locale, "source": "matched"}`.
+6. If no tag matched, return `ZMQResponse` with `data = {"locale": "en", "source": "fallback"}`.
 
-**Q1 - Select locale configuration by language-region:**
+**Q1 - Select locale configuration by language-region (system.sqlite):**
 
 ```sql
 SELECT locale
@@ -1342,7 +1382,7 @@ WHERE language = ? AND region = ?
 LIMIT 1;
 ```
 
-Note: If `locale_config` is not prepared, P2 skips Q1. P2 directly applies fallback `en`.
+Note: If `locale_config` is not seeded, Q1 returns no row for all tags and fallback `en` is returned.
 
 ### 8.16 UC-14 GetTopMenu
 
