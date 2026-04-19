@@ -168,8 +168,13 @@ Endpoint contracts:
 | API-18 | GET | /api/users/{user_id}/menu-visibility | none | user menu visibility settings |
 | API-19 | PUT | /api/users/{user_id}/menu-visibility | menu visibility setting list | saved user menu visibility settings |
 | API-20 | POST | /api/projects | project registration fields | registered project plus initial sprint |
-| API-21 | GET | /api/users/{user_id}/locale | none | user locale setting |
+| API-21 | GET | /api/users/{user_id}/locale | none | user locale setting plus selectable locale options (`en`, `de`, `fr`, `it`, `ja`, `zh`) |
 | API-22 | PUT | /api/users/{user_id}/locale | locale setting | saved user locale setting |
+
+Locale setting rules:
+
+- Explicit locale selection shall allow empty string (automatic) or one of `en`, `de`, `fr`, `it`, `ja`, `zh`.
+- API-21 shall return the selectable locale options used by the browser UI locale dropdown.
 
 ### 4.2 Interface IF-ZMQ-01 (P1 -> P2)
 

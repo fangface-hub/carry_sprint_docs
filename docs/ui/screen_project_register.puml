@@ -6,24 +6,26 @@ salt
 }
 {
 "Basic Information"
-[Project Name______________________]
-[Project Key_______________________]
-[Description_______________________]
-[Description_______________________]
-[Description_______________________]
+"Project Name______________________"
+"Project Key_______________________"
+"Description_______________________"
+"Description_______________________"
+"Description_______________________"
 }
 {
 "Initial Sprint Information"
-[Sprint Name_______________________]
-[Start Date_____] [End Date_______]
-[Working Days / Week__]
+"Sprint Name_______________________"
+"Start Date_____" "End Date_______"
+"Working Days / Week__"
 }
 {
 "Project Administrator"
-[Admin User________________________]
+"Admin User________________________"
 [Assign Admin Role]
 }
-[Register Project] [Cancel]
+{
+[Register Project] | [Cancel]
+}
 --
 Version 0.1   [Help]
 }

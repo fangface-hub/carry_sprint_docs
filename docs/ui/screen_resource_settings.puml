@@ -2,7 +2,10 @@
 salt
 {
 {T
-+ Resource Settings   [Back to Workspace]
++ Resource Settings
+}
+{
+[Back to Workspace]
 }
 --
 {|
@@ -14,14 +17,20 @@ Bob   | QA  | 4.0 | [X]
 }
 {+
 "Detail Form"
-Name: [________________]
-Role: [Developer v]
-Capacity(h/day): [____]
-Active: [X]
-[Save] [Delete]
+{
+Name:            | "________________"
+Role:            | ^Developer^
+Capacity(h/day): | "____"
+}
+[X] Active
+{
+[Save] | [Delete]
+}
 }
 |}
 --
-[Add Resource] [Save Changes] [Cancel]
+{
+[Add Resource] | [Save Changes] | [Cancel]
+}
 }
 @enduml

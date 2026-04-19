@@ -12,6 +12,7 @@ rectangle "Browser UI" {
   rectangle "Top Page" as screen_top
   rectangle "Project Select Screen" as screen_projects
   rectangle "Project Register Screen" as screen_project_register
+  rectangle "User Management Screen" as screen_users
   rectangle "Sprint Workspace Screen" as screen_workspace
   rectangle "Task Candidate Panel\n(Budget In / Budget Out)" as panel_task
   rectangle "Impact & Estimate Editor" as panel_editor
@@ -24,6 +25,7 @@ user --> screen_signin : Open application
 screen_signin --> screen_top : Sign in success
 screen_signin --> screen_signin : Sign in failure
 screen_top --> screen_projects : Open project select
+screen_top --> screen_users : Open user management
 screen_top --> screen_workspace : Open sprint workspace
 screen_top --> screen_resource : Open resource settings
 screen_top --> screen_calendar : Open calendar settings
@@ -71,6 +73,10 @@ end note
 
 note bottom of screen_project_register
   URL: /projects/new
+end note
+
+note bottom of screen_users
+  URL: /users
 end note
 
 note bottom of screen_resource

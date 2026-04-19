@@ -8,8 +8,10 @@ salt
 {| 
 {+
 "Sign In"
-User ID: [____________________]
-Password: [****************____]
+{
+User ID:  | "____________________"
+Password: | "****************____"
+}
 [Sign In]
 [Forgot Password]
 }

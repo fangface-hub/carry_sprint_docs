@@ -3,8 +3,10 @@ salt
 {
 {T
 + CarrySprint - Sprint Workspace
-Project: [Alpha v]   Sprint: [S1 v]   [Settings]
 }
+{|
+Project: | ^Alpha^ | Sprint: | ^S1^ | [Settings]
+|}
 --
 Remaining Hours: 12h   Productivity: 0.82   Selected Impact: High
 --
@@ -16,10 +18,12 @@ Remaining Hours: 12h   Productivity: 0.82   Selected Impact: High
 }
 {+
 "Task Editor"
-Title: [_____________________]
-Impact: [high v]
-Estimate(h): [____]
-Carry-over reason: [__________]
+{
+"Title:"             | "_____________________"
+"Impact:"            | ^high^
+"Estimate(h):"       | "____"
+"Carry-over reason:" | "__________"
+}
 }
 {+
 "Budget Out"
@@ -29,6 +33,8 @@ Carry-over reason: [__________]
 }
 |}
 --
-[Recalculate] [Confirm Selection] [Carry-over Review]
+{
+[Recalculate] | [Confirm Selection] | [Carry-over Review]
+}
 }
 @enduml

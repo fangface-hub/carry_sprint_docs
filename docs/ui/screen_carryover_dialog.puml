@@ -15,10 +15,12 @@ salt
 "Decision"
 (X) Keep deferred
 () Promote to budget-in
-Rationale: [__________________]
+Rationale: "__________________"
 }
 |}
 --
-[Apply] [Close]
+{
+[Apply] | [Close]
+}
 }
 @enduml

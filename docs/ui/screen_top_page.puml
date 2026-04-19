@@ -3,15 +3,20 @@ salt
 {
 {T
 + CarrySprint - Top Page
-Signed-in user: [admin v]   [Sign Out]
 }
+{|
+"Signed-in user:" | ^admin^ | [Sign Out]
+|}
 --
 "Menu Visibility Settings (Per User)"
 {| 
 {+
-User: [admin v]
-[Preferred Locale: Automatic v]
-[Effective Locale: ja]
+{
+"User:"             | ^admin^
+"Preferred Locale:" | ^Automatic^
+"Effective Locale:" | ja
+"Locale Options:"   | ^Automatic^
+}
 [Save Locale Settings]
 [X] Project Select
 [X] Sprint Workspace

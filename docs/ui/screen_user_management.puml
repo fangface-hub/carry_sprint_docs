@@ -1,0 +1,34 @@
+@startuml CarrySprintUserManagementScreen
+salt
+{
+{T
++ CarrySprint - User Management Screen
+}
+--
+{| 
+{+
+"Create User"
+{
+"User ID:" | "u100             "
+"Name:"    | "New User         "
+"Email:"   | "new@example.com  "
+}
+[Create]
+}
+{+
+"User List"
+{#
+= User ID |= Name |= Email |= Role |=  |= 
+u001 | "Demo User      " | "demo@example.com " | ^administrator^ | [Update] | [Delete]
+u002 | "Alice          " | "alice@example.com" | ^assignee^      | [Update] | [Delete]
+u003 | "Bob            " | "bob@example.com  " | ^assignee^      | [Update] | [Delete]
+u004 | "Carol          " | "carol@example.com" | ^viewer^        | [Update] | [Delete]
+u005 | "Dave           " | "dave@example.com " | ^viewer^        | [Update] | [Delete]
+}
+}
+|}
+--
+Manage user registration, update, deletion, and role assignment.
+URL: /users
+}
+@enduml

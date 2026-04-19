@@ -19,7 +19,9 @@ p1/
   main.go                   Entry point. Wires HTTP transport and ZMQ gateway.
   transport/
     http/
-      router.go             Registers browser UI routes. Registers API routes.
+      router.go             Registers browser UI routes. Registers API routes. Resolves screen shell metadata.
+      ui_shell.tmpl         Shared HTML shell template for browser UI routes.
+      ui_app.js             Browser UI renderer. Switches route to screen-specific rendering logic.
       middleware/
         request_id.go       Validates X-Request-Id.
       handler/
@@ -668,7 +670,7 @@ Response `data` field:
 | --- | --- | --- |
 | user_id | string | Target user identifier |
 | locale | string | Explicit locale setting. Empty string means automatic selection. |
-| locale_options | array | Allowed locale values for explicit selection |
+| locale_options | array | Allowed locale values for explicit selection: `en`, `de`, `fr`, `it`, `ja`, `zh` |
 
 ### 5.22 API-22 PUT /api/users/{user_id}/locale
 
@@ -676,7 +678,7 @@ Request body fields:
 
 | Field | Type | Constraint | Description |
 | --- | --- | --- | --- |
-| locale | string | Empty string or one of `de`, `fr`, `it`, `ja`, `zh` | Explicit locale setting |
+| locale | string | Empty string or one of `en`, `de`, `fr`, `it`, `ja`, `zh` | Explicit locale setting |
 
 Response `data` field: same structure as API-21.
 
@@ -744,7 +746,7 @@ CREATE TABLE IF NOT EXISTS user_locale_settings (
 Column notes:
 
 - `user_id` references `users.user_id` at the application validation layer.
-- `locale` stores one explicit locale value from `de`, `fr`, `it`, `ja`, `zh`.
+- `locale` stores one explicit locale value from `en`, `de`, `fr`, `it`, `ja`, `zh`.
 
 ### 6.2.3 Table: user_credentials (system.sqlite)
 

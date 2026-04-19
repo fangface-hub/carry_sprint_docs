@@ -2,7 +2,7 @@
 salt
 {
 {T
-+ Working-Day Calendar   Month: [2026-04 v]
++ Working-Day Calendar   Month: ^2026-04^
 }
 --
 {|
@@ -19,12 +19,14 @@ Mo Tu We Th Fr Sa Su
 "Side Controls"
 [X] Working day
 [ ] Holiday
-Note: [_________________]
+Note: "_________________"
 [Bulk Set Weekdays]
 [Import Holidays]
 }
 |}
 --
-[Save Calendar] [Reset Month] [Return to Workspace]
+{
+[Save Calendar] | [Reset Month] | [Return to Workspace]
+}
 }
 @enduml
