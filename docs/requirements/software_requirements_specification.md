@@ -111,6 +111,7 @@ The browser client shall place each major UI at the following URL.
 | --- | --- | --- |
 | Top Page | `/` | Entry point of the browser client |
 | Project Select Screen | `/projects` | Project selection UI |
+| Project Register Screen | `/projects/new` | Project registration UI |
 | Sprint Workspace Screen | `/projects/{project_id}/sprints/{sprint_id}/workspace` | Sprint work review UI for one project, one sprint |
 | Resource Settings Screen | `/projects/{project_id}/resources` | Resource settings UI for one project |
 | Working-Day Calendar Screen | `/projects/{project_id}/calendar` | Working-day calendar UI for one project |
@@ -242,6 +243,20 @@ This diagram shows the external appearance of the user management screen.
 
 ```plantuml
 !include ../ui/screen_user_management.puml
+```
+
+#### 4.3.8 Project Register Screen
+
+This diagram shows the external appearance of the project registration screen.
+
+| Element | Description |
+| --- | --- |
+| Basic information input | Input area for project name, key, description |
+| Initial sprint input | Input area for initial sprint period and basic settings |
+| Administrator assignment | Input area for initial project administrator |
+
+```plantuml
+!include ../ui/screen_project_register.puml
 ```
 
 ## 5. User Management Requirements

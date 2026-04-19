@@ -23,7 +23,7 @@ p1/
       middleware/
         request_id.go       Validates X-Request-Id.
       handler/
-        projects.go         API-01, API-02 handlers
+        projects.go         API-01, API-02, API-20 handlers
         workspace.go        API-03 handler
         tasks.go            API-04 handler
         resources.go        API-05, API-06 handlers
@@ -66,7 +66,7 @@ p2/
       dispatcher.go         Routes command to use case executor.
   application/
     usecase/
-      projects.go           ListProjects, GetProjectSummary
+      projects.go           ListProjects, GetProjectSummary, CreateProject
       workspace.go          GetSprintWorkspace
       tasks.go              UpdateTask
       resources.go          ListResources, SaveResources
@@ -79,6 +79,7 @@ p2/
       menu_visibility.go    GetUserMenuVisibility, SaveUserMenuVisibility
       bootstrap.go          InitializeAdminUser
     validator/
+      projects.go           Input rule checks for UC-17
       tasks.go              Input rule checks for UC-03
       resources.go          Input rule checks for UC-04
       calendar.go           Input rule checks for UC-05
@@ -283,6 +284,7 @@ P1 browser UI route registration schema:
 | --- | --- | --- | --- | --- |
 | Top Page | / | none | Serve top page shell | API-17, API-18, API-19 |
 | Project Select Screen | /projects | none | Serve project select shell | API-01, API-02 |
+| Project Register Screen | /projects/new | none | Serve project register shell | API-10, API-20 |
 | Sprint Workspace Screen | /projects/{project_id}/sprints/{sprint_id}/workspace | path params: `project_id`, `sprint_id` | Serve sprint workspace shell | API-03, API-04 |
 | Resource Settings Screen | /projects/{project_id}/resources | path param: `project_id` | Serve resource settings shell | API-05, API-06 |
 | Working-Day Calendar Screen | /projects/{project_id}/calendar | path param: `project_id` | Serve calendar settings shell | API-07, API-08 |
@@ -302,6 +304,7 @@ Browser UI API integration acceptance criteria:
 
 - Top Page (`/`) shall integrate API-10, API-17, API-18, API-19 for menu and visibility operations.
 - Project Select Screen (`/projects`) shall integrate API-01 and API-02.
+- Project Register Screen (`/projects/new`) shall integrate API-10 and API-20.
 - Sprint Workspace Screen (`/projects/{project_id}/sprints/{sprint_id}/workspace`) shall integrate API-03 and API-04.
 - Carry-Over Review Dialog route shall integrate API-03 and API-09.
 - Resource Settings Screen shall integrate API-05 and API-06.
@@ -600,6 +603,34 @@ Request body fields:
 | menu_visibility[].is_enabled | boolean | Required | Enable flag for the menu key |
 
 Response `data` field: same structure as request body plus `user_id`.
+
+### 5.20 API-20 POST /api/projects
+
+Request body fields:
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| project_id | string | Yes | Project identifier; must be unique |
+| name | string | Yes | Project display name |
+| description | string | Yes | Project description |
+| initial_sprint | object | Yes | Initial sprint definition |
+| initial_sprint.sprint_id | string | Yes | Initial sprint identifier |
+| initial_sprint.name | string | Yes | Initial sprint name |
+| initial_sprint.start_date | string | Yes | ISO 8601 date |
+| initial_sprint.end_date | string | Yes | ISO 8601 date |
+| initial_admin_user_id | string | Yes | Existing user identifier for administrator assignment |
+
+Response `data` field:
+
+| Field | Type | Description |
+| --- | --- | --- |
+| project_id | string | Registered project identifier |
+| name | string | Registered project name |
+| description | string | Registered project description |
+| initial_sprint.sprint_id | string | Registered initial sprint identifier |
+| initial_sprint.name | string | Registered initial sprint name |
+| initial_admin_user_id | string | Assigned administrator user identifier |
+| created_at | string | RFC3339 timestamp |
 
 ## 6. Database Schema
 
@@ -900,6 +931,12 @@ P1 executes these steps before API-specific logic for every API handler:
 2. Parse JSON body. If parsing fails, return `400 INVALID_JSON`.
 3. Build `ZMQRequest`: `command = "save_user_menu_visibility"`, `path_params = {"user_id": user_id}`, serialized payload.
 4. Send to P2, return HTTP response.
+
+### 7.21 HandleCreateProject (API-20)
+
+1. Parse JSON body. If parsing fails, return `400 INVALID_JSON`.
+2. Build `ZMQRequest`: `command = "create_project"`, empty `path_params`, serialized payload.
+3. Send to P2, return HTTP response.
 
 ## 8. P2 Use Case Handler Design
 
@@ -1432,6 +1469,55 @@ INSERT INTO user_credentials (user_id, password_hash, created_at, updated_at)
 VALUES ('admin', ?, ?, ?);
 ```
 
+### 8.20 UC-17 CreateProject
+
+Function: `CreateProject(env ZMQRequest) ZMQResponse`
+
+Processing steps:
+
+1. Decode payload into `CreateProjectPayload`.
+2. Execute Q1 on `system.sqlite`. If row exists, return error `DUPLICATE_PROJECT_ID`.
+3. Execute Q2 on `system.sqlite` to verify `initial_admin_user_id` exists. If no row returned, return error `USER_NOT_FOUND`.
+4. Validate: if `initial_sprint.start_date` is after `initial_sprint.end_date`, return error `INVALID_SPRINT_DATE_RANGE`.
+5. Begin transaction on `system.sqlite`. Execute Q3 to insert project row. Commit transaction.
+6. Open `project_{id}.sqlite`. Begin transaction. Execute Q4 to insert initial sprint row.
+7. Execute Q5 to insert initial project administrator role row.
+8. Commit transaction.
+9. Return `ZMQResponse` with `status = "ok"`. Return registered project and initial sprint summary as `data`.
+
+**Q1 - Check project_id uniqueness (system.sqlite):**
+
+```sql
+SELECT project_id FROM projects WHERE project_id = ?;
+```
+
+**Q2 - Check initial administrator existence (system.sqlite):**
+
+```sql
+SELECT user_id FROM users WHERE user_id = ?;
+```
+
+**Q3 - Insert project (system.sqlite):**
+
+```sql
+INSERT INTO projects (project_id, name, description, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?);
+```
+
+**Q4 - Insert initial sprint (project_{id}.sqlite):**
+
+```sql
+INSERT INTO sprints (sprint_id, project_id, name, start_date, end_date, available_hours, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, 0, ?, ?);
+```
+
+**Q5 - Insert initial administrator role (project_{id}.sqlite):**
+
+```sql
+INSERT INTO project_roles (project_id, user_id, role)
+VALUES (?, ?, 'administrator');
+```
+
 ## 9. Error Code Reference
 
 | Code | Origin | HTTP Status | Trigger Condition |
@@ -1453,6 +1539,8 @@ VALUES ('admin', ?, ?, ?);
 | INVALID_ROLE | P2 | 422 | role value not in "administrator", "assignee" |
 | INVALID_MENU_KEY | P2 | 422 | menu_key value not in allowed set |
 | DUPLICATE_MENU_KEY | P2 | 422 | Same menu_key appears more than once in input |
+| DUPLICATE_PROJECT_ID | P2 | 422 | project_id already exists in projects table |
+| INVALID_SPRINT_DATE_RANGE | P2 | 422 | initial_sprint.start_date is after initial_sprint.end_date |
 | INITIAL_USER_BOOTSTRAP_FAILED | P2 | 500 | Startup bootstrap for initial admin user fails |
 | PERSISTENCE_ERROR | P2 | 500 | SQLite read operation failure, SQLite write operation failure |
 | UPSTREAM_UNAVAILABLE | P1 | 502 | ZMQ transport failure |
@@ -1470,7 +1558,7 @@ VALUES ('admin', ?, ?, ?);
 | §5.1 P1 validation/response mapping rules | §7 P1 Handler Processing Design |
 | §5.2 P2 dispatch/persistence rules | §8 P2 Use Case Handler Design |
 | §5.3 P2 startup initialization process | §8.19 Startup InitializeAdminUser |
-| §6.1 to 6.16 Use case conditions/behaviors | §8.1 to 8.18 Use case handler processing steps |
+| §6.1 to 6.17 Use case conditions/behaviors | §8.1 to 8.20 Use case handler processing steps |
 | §7 Error model | §9 Error Code Reference |
 | §8 Timeouts/retries | §7.1 Common Steps (transport error, timeout handling) |
 
@@ -1485,4 +1573,5 @@ VALUES ('admin', ?, ?, ?);
 | SRS-UI-13 | §4.2 Common UI Requirements | Display only enabled menu buttons for the signed-in user | §8.16 UC-14 | Filter rule `is_enabled = 1` for signed-in user |
 | SRS-UI-14 | §4.2.1 UI Placement URL | Place each major UI at the defined stable URL | §5.0 Browser UI Routes, §7 P1 Handler Processing Design | Browser UI route registration schema, router registration rules |
 | SRS-SC-02 | §4.3.2 Top Page Screen | Display menu area plus menu visibility settings area | §5.17 to §5.19, §8.16 to §8.18 | Top menu retrieval plus per-user menu visibility retrieval/update |
+| SRS-SC-08 | §4.3.8 Project Register Screen | Display project registration inputs plus initial sprint inputs plus administrator assignment input | §5.20, §7.21, §8.20 | Project registration payload schema, P1 registration handler, P2 project creation use case |
 | SRS-UM-00 | §5.0 Initial User Requirements | Prepare initial user `admin` with initial password `admin` | §6.2.1, §8.19 | Startup bootstrap inserts `admin` user plus credential hash from initial password value |

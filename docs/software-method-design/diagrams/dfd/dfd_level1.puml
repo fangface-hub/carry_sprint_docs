@@ -12,7 +12,7 @@ rectangle "P2 Application Process" as p2
 database "System SQLite\nsystem.sqlite" as db_system
 database "Project SQLite\nproject_<id>.sqlite" as db_project
 
-user --> browser : Open top page\nSelect project\nEdit task\nApply carry-over\nSet menu visibility
+user --> browser : Open top page\nSelect project\nRegister project\nEdit task\nApply carry-over\nSet menu visibility
 browser --> p1 : HTTP JSON request
 p1 --> p2 : ZeroMQ JSON command
 p2 --> db_system : SQL read/write

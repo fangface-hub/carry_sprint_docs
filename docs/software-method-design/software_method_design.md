@@ -20,6 +20,7 @@ Target functional scope:
 
 - Top page retrieval
 - Project selection
+- Project registration
 - Sprint workspace retrieval
 - Task update
 - Resource settings retrieval/update
@@ -110,6 +111,7 @@ Browser UI route contracts:
 | --- | --- | --- | --- |
 | Top Page | / | none | Open top page menu |
 | Project Select Screen | /projects | none | Open project selection screen |
+| Project Register Screen | /projects/new | none | Open project registration screen |
 | Sprint Workspace Screen | /projects/{project_id}/sprints/{sprint_id}/workspace | required path params: `project_id`, `sprint_id` | Open sprint workspace for one project plus one sprint |
 | Resource Settings Screen | /projects/{project_id}/resources | required path param: `project_id` | Open resource settings for one project |
 | Working-Day Calendar Screen | /projects/{project_id}/calendar | required path param: `project_id` | Open working-day calendar for one project |
@@ -128,6 +130,7 @@ Browser UI API integration acceptance criteria:
 
 - Top Page (`/`) shall call API-10 to resolve selectable users, API-17 to resolve enabled menu buttons, and API-18/API-19 to read/write user menu visibility.
 - Project Select Screen (`/projects`) shall call API-01 and may call API-02 for selected project detail.
+- Project Register Screen (`/projects/new`) shall call API-10 for administrator candidate list and shall call API-20 for project registration.
 - Sprint Workspace Screen (`/projects/{project_id}/sprints/{sprint_id}/workspace`) shall call API-03 and may call API-04 for task update actions.
 - Carry-Over Review Dialog route shall call API-03 and API-09.
 - Resource Settings Screen shall call API-05 and API-06.
@@ -158,6 +161,7 @@ Endpoint contracts:
 | API-17 | GET | /api/top/menu | none | enabled menu button list for signed-in user |
 | API-18 | GET | /api/users/{user_id}/menu-visibility | none | user menu visibility settings |
 | API-19 | PUT | /api/users/{user_id}/menu-visibility | menu visibility setting list | saved user menu visibility settings |
+| API-20 | POST | /api/projects | project registration fields | registered project plus initial sprint |
 
 ### 4.2 Interface IF-ZMQ-01 (P1 -> P2)
 
@@ -216,6 +220,7 @@ Command mapping:
 | `get_top_menu` | API-17 |
 | `get_user_menu_visibility` | API-18 |
 | `save_user_menu_visibility` | API-19 |
+| `create_project` | API-20 |
 
 ### 4.3 Interface IF-DB-01 (P2 -> SQLite)
 
@@ -434,7 +439,14 @@ Allowed menu key set:
 - calendar_settings
 - user_management
 
-### 6.17 Activity Diagrams
+### 6.17 UC-17 Register Project
+
+- Condition: project_id does not exist in `projects` table. Behavior: insert project row in `system.sqlite`, create `project_{id}.sqlite`, insert initial sprint row, insert initial administrator role row.
+- Condition: project_id already exists in `projects` table. Behavior: return `DUPLICATE_PROJECT_ID`.
+- Condition: initial sprint start_date is after end_date. Behavior: return `INVALID_SPRINT_DATE_RANGE`.
+- Condition: administrator user_id does not exist in `users` table. Behavior: return `USER_NOT_FOUND`.
+
+### 6.18 Activity Diagrams
 
 The following activity diagram defines UC-02 control flow with condition branches.
 
@@ -458,6 +470,12 @@ The following activity diagram defines UC-16 control flow for user menu visibili
 
 ```plantuml
 !include ./diagrams/activity/activity_uc16_save_user_menu_visibility.puml
+```
+
+The following activity diagram defines UC-17 control flow for project registration.
+
+```plantuml
+!include ./diagrams/activity/activity_uc17_register_project.puml
 ```
 
 The following activity diagram defines P2 startup initialization flow for initial admin user bootstrap.
@@ -495,6 +513,8 @@ Error code table:
 | INVALID_ROLE | Role value not in allowed set | 422 |
 | INVALID_MENU_KEY | Menu key value not in allowed set | 422 |
 | DUPLICATE_MENU_KEY | Menu key duplicated in input | 422 |
+| DUPLICATE_PROJECT_ID | Project identifier duplicated | 422 |
+| INVALID_SPRINT_DATE_RANGE | Initial sprint period is invalid | 422 |
 | PERSISTENCE_ERROR | SQLite read failure, SQLite write failure | 500 |
 | INITIAL_USER_BOOTSTRAP_FAILED | Initial admin user bootstrap failed at startup | 500 |
 | UPSTREAM_UNAVAILABLE | ZeroMQ transport failure | 502 |
@@ -518,7 +538,7 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | SRS-SYS-01 | §1 System Architecture | ZeroMQ-based inter-process communication between client and server | §4.2 IF-ZMQ-01 | ZeroMQ REQ/REP protocol, JSON request/response schema, command mapping |
 | SRS-SYS-02 | §1 System Architecture | SQLite-based per-project storage | §3.2 Data Store Access Rule, §4.3 IF-DB-01 | P2-only SQLite access rule, SQL read/write access mode |
 | SRS-SYS-03 | §2 Software Architecture | API gateway as HTTP entry point with request routing boundary | §4.1 IF-HTTP-01, §5.1 P1 | HTTPS endpoint contracts, P1 input validation rules, P1 response mapping rules |
-| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §3.4 MVC Responsibility Mapping, §5.2 P2, §6.1 to 6.16 | MVC role boundaries, P2 command dispatch rules, use case handlers UC-01 through UC-16 |
+| SRS-SYS-04 | §2 Software Architecture | Application component for MVC-based domain logic | §3.4 MVC Responsibility Mapping, §5.2 P2, §6.1 to 6.17 | MVC role boundaries, P2 command dispatch rules, use case handlers UC-01 through UC-17 |
 
 ### 9.2 Database
 
@@ -560,6 +580,7 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | SRS-SC-05 | §4.3.5 Working-Day Calendar Screen | Display calendar grid plus calendar control area | §6.5 UC-05, §4.1 API-07, API-08 | `get_calendar` command, `save_calendar` command |
 | SRS-SC-06 | §4.3.6 Carry-Over Review Dialog | Display deferred task review plus carry-over decision input | §6.6 UC-06, §4.1 API-09 | `apply_carryover` command with keep/move decision handling |
 | SRS-SC-07 | §4.3.7 User Management Screen | Display user list plus user edit form plus project role assignment area | §6.7 to 6.12, §4.1 API-10 to API-15 | User CRUD commands, `get_project_roles` command, `save_project_roles` command |
+| SRS-SC-08 | §4.3.8 Project Register Screen | Display project registration inputs plus initial sprint inputs plus administrator assignment input | §6.17 UC-17, §4.1 API-20 | `create_project` command with initial sprint and administrator setup |
 
 ### 9.5 User Management Requirements
 
@@ -594,6 +615,7 @@ This table traces each requirement in `docs/requirements/software_requirements_s
 | Top page menu button support | API-17, UC-14 |
 | User-specific menu visibility control | API-18, API-19, UC-15, UC-16 |
 | User registration/modification/deletion | API-10, API-11, API-12, API-13, UC-07 through UC-10 |
+| Project registration | API-20, UC-17 |
 | Initial admin user bootstrap | Section 5.3 |
 | Project role assignment | API-14, API-15, UC-11, UC-12 |
 | Default locale resolution | API-16, UC-13 |

@@ -1,0 +1,51 @@
+@startuml CarrySprintActivityUC17
+
+title Activity UC-17 Register Project
+
+skinparam shadowing false
+skinparam defaultTextAlignment center
+
+start
+
+:Receive HTTP POST /api/projects;
+if (JSON payload valid?) then (yes)
+else (no)
+  :Return 400 INVALID_JSON;
+  stop
+endif
+
+:Send create_project command to P2;
+if (P2 transport error?) then (yes)
+  :Return 502 UPSTREAM_UNAVAILABLE;
+  stop
+else (no)
+endif
+
+:P2 checks project_id uniqueness;
+if (project_id duplicated?) then (yes)
+  :Return 422 DUPLICATE_PROJECT_ID;
+  stop
+else (no)
+endif
+
+:P2 checks initial_admin_user_id exists;
+if (Admin user exists?) then (yes)
+else (no)
+  :Return 404 USER_NOT_FOUND;
+  stop
+endif
+
+if (initial_sprint date range valid?) then (yes)
+else (no)
+  :Return 422 INVALID_SPRINT_DATE_RANGE;
+  stop
+endif
+
+:Insert project row in system.sqlite;
+:Create or open project_<id>.sqlite;
+:Insert initial sprint row;
+:Insert initial administrator role row;
+:Return 200 response;
+stop
+
+@enduml
