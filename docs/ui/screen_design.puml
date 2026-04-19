@@ -8,6 +8,7 @@ skinparam defaultTextAlignment center
 actor "User" as user
 
 rectangle "Browser UI" {
+  rectangle "Sign-In Screen" as screen_signin
   rectangle "Top Page" as screen_top
   rectangle "Project Select Screen" as screen_projects
   rectangle "Project Register Screen" as screen_project_register
@@ -19,11 +20,14 @@ rectangle "Browser UI" {
   rectangle "Carry-Over Review Dialog" as dialog_carry
 }
 
-user --> screen_top : Open application
+user --> screen_signin : Open application
+screen_signin --> screen_top : Sign in success
+screen_signin --> screen_signin : Sign in failure
 screen_top --> screen_projects : Open project select
 screen_top --> screen_workspace : Open sprint workspace
 screen_top --> screen_resource : Open resource settings
 screen_top --> screen_calendar : Open calendar settings
+screen_top --> screen_signin : Sign out
 screen_projects --> screen_workspace : Open selected project
 screen_projects --> screen_project_register : Open project register
 screen_project_register --> screen_projects : Register and return
@@ -44,8 +48,14 @@ note right of screen_top
   Display menu as buttons.
   Control menu visibility per user.
   URL: /
+  Sign-In URL: /signin
   Project Select URL: /projects
   User Management URL: /users
+end note
+
+note right of screen_signin
+  Display this screen when user is not signed in.
+  Display requested UI after successful sign-in.
 end note
 
 note right of panel_task

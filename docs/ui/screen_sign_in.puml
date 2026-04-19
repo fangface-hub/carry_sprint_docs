@@ -1,0 +1,20 @@
+@startuml CarrySprintSignInScreen
+salt
+{
+{T
++ CarrySprint - Sign-In Screen
+}
+--
+{| 
+{+
+"Sign In"
+User ID: [____________________]
+Password: [****************____]
+[Sign In]
+[Forgot Password]
+}
+|}
+--
+Display this screen when the user is not signed in.
+}
+@enduml

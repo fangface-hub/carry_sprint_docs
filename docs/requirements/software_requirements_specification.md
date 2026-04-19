@@ -110,6 +110,7 @@ The browser client shall place each major UI at the following URL.
 | UI | URL | Purpose |
 | --- | --- | --- |
 | Top Page | `/` | Entry point of the browser client |
+| Sign-In Screen | `/signin` | User sign-in UI |
 | Project Select Screen | `/projects` | Project selection UI |
 | Project Register Screen | `/projects/new` | Project registration UI |
 | Sprint Workspace Screen | `/projects/{project_id}/sprints/{sprint_id}/workspace` | Sprint work review UI for one project, one sprint |
@@ -127,7 +128,12 @@ The browser client shall place each major UI at the following URL.
 - Implement the UI structure defined in this specification.
 - Implement the UI elements defined in this specification.
 - Provide a top page as a major screen.
+- Provide a sign-in screen as a major screen.
 - Display top-page menu entries as buttons.
+- Display the sign-in screen when the user is not signed in.
+- Display the requested UI when the user signs in successfully.
+- Sign out the current user from the top page.
+- Display the sign-in screen after sign-out completes.
 - Support locale settings per user.
 - Allow the user to specify locale from user settings.
 - Support menu visibility settings per user.
@@ -155,7 +161,21 @@ The browser client shall place each major UI at the following URL.
 
 ### 4.3 Screen-specific Visual Design
 
-#### 4.3.1 Project Select Screen
+#### 4.3.1 Sign-In Screen
+
+This diagram shows the external appearance of the sign-in screen.
+
+| Element | Description |
+| --- | --- |
+| User ID input | Input area for user ID |
+| Password input | Input area for password |
+| Sign-in action | Action area for sign-in execution |
+
+```plantuml
+!include ../ui/screen_sign_in.puml
+```
+
+#### 4.3.2 Project Select Screen
 
 This diagram shows the external appearance of the project selection screen.
 
@@ -169,7 +189,7 @@ This diagram shows the external appearance of the project selection screen.
 !include ../ui/screen_project_select.puml
 ```
 
-#### 4.3.2 Top Page Screen
+#### 4.3.3 Top Page Screen
 
 This diagram shows the external appearance of the top page screen.
 
@@ -183,7 +203,7 @@ This diagram shows the external appearance of the top page screen.
 !include ../ui/screen_top_page.puml
 ```
 
-#### 4.3.3 Sprint Workspace Screen
+#### 4.3.4 Sprint Workspace Screen
 
 This diagram shows the external appearance of the sprint workspace screen.
 
@@ -197,7 +217,7 @@ This diagram shows the external appearance of the sprint workspace screen.
 !include ../ui/screen_sprint_workspace.puml
 ```
 
-#### 4.3.4 Resource Settings Screen
+#### 4.3.5 Resource Settings Screen
 
 This diagram shows the external appearance of the resource settings screen.
 
@@ -210,7 +230,7 @@ This diagram shows the external appearance of the resource settings screen.
 !include ../ui/screen_resource_settings.puml
 ```
 
-#### 4.3.5 Working-Day Calendar Screen
+#### 4.3.6 Working-Day Calendar Screen
 
 This diagram shows the external appearance of the working-day calendar screen.
 
@@ -223,7 +243,7 @@ This diagram shows the external appearance of the working-day calendar screen.
 !include ../ui/screen_calendar_settings.puml
 ```
 
-#### 4.3.6 Carry-Over Review Dialog
+#### 4.3.7 Carry-Over Review Dialog
 
 This diagram shows the external appearance of the carry-over review dialog.
 
@@ -236,7 +256,7 @@ This diagram shows the external appearance of the carry-over review dialog.
 !include ../ui/screen_carryover_dialog.puml
 ```
 
-#### 4.3.7 User Management Screen
+#### 4.3.8 User Management Screen
 
 This diagram shows the external appearance of the user management screen.
 
@@ -250,7 +270,7 @@ This diagram shows the external appearance of the user management screen.
 !include ../ui/screen_user_management.puml
 ```
 
-#### 4.3.8 Project Register Screen
+#### 4.3.9 Project Register Screen
 
 This diagram shows the external appearance of the project registration screen.
 
